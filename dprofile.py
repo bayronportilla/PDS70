@@ -17,6 +17,14 @@ a_c=34.5
 beta=1.25
 h100=10
 
+print('K_b=',(m_b/ms)**2*hp**-5*alpha**-1)
+print('K_c=',(m_c/ms)**2*hp**-5*alpha**-1)
+
+
+
+
+sys.exit()
+
 def h(r):
     value=h100*(r/100)**beta
     return value

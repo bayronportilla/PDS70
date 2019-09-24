@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import matplotlib as mpl
+plt.style.use('fancy')
 
 ############################################################
 # Canonical units
@@ -10,44 +12,28 @@ uT=2.639e35
 
 ############################################################
 # Constants and definitions 
+AU=149.6e9
+pc=206265.0*AU
+ly=63241.1*AU
 c=300.0e6 
 k=1.3806e-23 
 h=6.6261e-34
 R=1.26*6.9551e8
-dist=23396638.95*149.6e9
+dist=113.43*pc
 Teff=3972.0
 
-"""
 ############################################################
-# Synthetic spectrum
-synthetic_spec=np.loadtxt('Kurucz_04000_4.0.dat',skiprows=3)
-#synthetic_spec=np.loadtxt('Kurucz_04000_0.0.dat',skiprows=3)
+# MCMax3D data
+data=np.loadtxt('star0001.dat')
 
-x_synthetic=[]
-y_synthetic=[]
-for i in range(0,synthetic_spec.shape[0]):
-    x_synthetic.append(synthetic_spec[i][0])
-    y_synthetic.append(synthetic_spec[i][1])
-x_synthetic=np.array(x_synthetic)
-y_synthetic=np.array(y_synthetic) # erg/cm^2/s/Hz/sr
-y_synthetic=y_synthetic*np.pi # erg/cm^2/s/Hz
-y_synthetic=y_synthetic/300.0e6 # erg/s*cm^2*m
-y_synthetic=y_synthetic/1e3 # W/m^2*m
-y_synthetic=y_synthetic*1e-6 # W/m^2*microns
-x_synthetic=x_synthetic/1000.0 # microns
+flux_min=[]
+for i in range(0,data.shape[0]):
+    factor=c/((data[i][0]*1e-6)**2) # (m/s/m^2)
+    flux_min.append(factor*(data[i][1]*1e-26)) # from Jy to W/m^3
+flux_min=np.array(flux_min)
 
-y_plot=x_synthetic*y_synthetic*(R/dist)**2
-
-
-plt.plot(x_synthetic,y_synthetic*x_synthetic*(R/dist)**2)
-plt.xscale('log')
-plt.yscale('log')
-plt.show()
-
-#sys.exit()
-"""
 ############################################################
-# Wavelenght range (microns)
+# Wavelenght range (input in microns)
 lmin=0.1
 lmax=1e3
 Npoints=1e5
@@ -64,101 +50,52 @@ lrange=lrange/uL
 
 ############################################################
 # Planck function
-def planck_function(x,Teff):
-    value=2*np.pi*h*c**2/x**5 * 1/(np.exp(h*c/(x*k*Teff))-1)
+def planck_function(x,Teff): 
+    value=2*np.pi*h*c**2/x**5 * 1/(np.exp(h*c/(x*k*Teff))-1) 
     return value
 
 ############################################################
-# Flux in W/m^3
+# Flux at r=dist
 flux=planck_function(lrange,Teff)*(R/dist)**2
 
 ############################################################
 # Converting to SI
-flux=flux*uM/(uL*uT**3)
-lrange=lrange*uL
+flux=flux*uM/(uL*uT**3) # W/m^3
+lrange=lrange*uL # m
 
 ############################################################
 # Converting wavelenght to micron and flux to W/m^2/micron
-flux=flux*1e-6
-lrange=lrange*1e6
+flux=flux*1e-6 # W/m^2/micron
+lrange=lrange*1e6 # microns
 
 ############################################################
 # Generating file of theoretical spectrum for MCMax3D
 file=open('black_body_PDS70.dat','w')
 for i in range(0,len(lrange)):
-    file.write("%.16e %.16e\n"%(lrange[i],(flux*lrange)[i]))
+    #file.write("%.16e %.16e\n"%(lrange[i],(flux*lrange)[i]))
+    file.write("%.16e %.16e\n"%(lrange[i],flux[i]))
 
-sys.exit()
+
 ############################################################
 # Plot lambda*F_lambda vs wavelenght
-plt.plot(lrange,flux*lrange)
-#plt.plot(lrange,flux,'.')
-#plt.plot(x_synthetic,y_synthetic*x_synthetic*(R/dist)**2*1e29)
-plt.xscale('log')
-plt.yscale('log')
-plt.xlabel('$\lambda$ (microns)')
-plt.ylabel('$\lambda F_{\lambda}$ (W/m^2)')
-plt.xlim(1e-1,1e3)
-plt.ylim(1e-17,1e-12)
+
+fig,(ax_1,ax_2) = plt.subplots(1, 2,figsize=(16,8),sharex=True)
+
+ax_1.plot(lrange,flux*lrange)
+ax_1.set_xscale('log')
+ax_1.set_yscale('log')
+ax_1.set_xlabel(r'$\lambda \, (\mu\mathrm{m})$')
+ax_1.set_ylabel(r'$\lambda F_{\lambda}$ (W/m^2)')
+ax_1.set_ylim(1e-17,1e-12)
+
+ax_2.plot(lrange,flux,label='my spectrum')
+ax_2.plot(data[:,0:1],flux_min/1e6,'.',label='MCMax3D')
+
+ax_2.legend()
+ax_2.set_xscale('log')
+ax_2.set_yscale('log')
+ax_2.set_xlabel(r'$\lambda \, (\mu\mathrm{m})$')
+ax_2.set_ylabel(r'$F_{\lambda}$ (W/m^2/\mu\mathrm{m})')
+#ax_2.set_ylim(1e-17,1e-12)
+
 plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
