@@ -13,7 +13,7 @@ x_array=[]
 y_array=[]
 for i in range(0,len(x_photometry)):
     factor=cte.c.value/((x_photometry[i]*1e-6)**2) # (m/s/m^2)
-    flux=factor*((y_photometry[i]/1e3)*1e-26) # from Jy to W/m^3
+    flux=factor*((y_photometry[i]/1e3)*1e-26) # from mJy to W/m^3
     x_array.append(x_photometry[i]) # microns
     y_array.append(flux/1e6) # W/m^2/microns 
 
