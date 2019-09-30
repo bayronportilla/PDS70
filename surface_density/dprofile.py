@@ -1,17 +1,62 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
-from astropy import constants as const
+from astropy import constants as cte
+from scipy.integrate import romb
 
 ############################################################
 # Constants and definitions
+m_a=0.76 # Stellar mass (solar masses)
+m_b=(7.5)*cte.M_jup.value/cte.M_sun.value # (solar masses)
+m_c=(8.0)*cte.M_jup.value/cte.M_sun.value # (solar masses)
+mu=0.0
+
+############################################################
+# Case 1. No gaps
+R_in=0.04 # Disk's inner limit (AU)
+R_out=120.0 # Disk's inner limit (AU)
+R_exp=40.0 # Characteristic radius (AU)
+N_points=1.025e3 # Number of discrete points where density is computed
+M_dust=3.0e-5 # Total dust mass (solar masses)
+
+
+def density_wog(r):
+    exp_value=np.exp(-R_in/R_exp)-np.exp(-R_out/R_exp)
+    sigma_0=M_dust/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2) # g/cm2
+    value=sigma_0*R_exp/r*np.exp(-r/R_exp)
+    return value
+
+
+r_array=np.linspace(R_in,R_out,N_points)
+rho_array=[]
+for r in r_array:
+    rho_array.append(density_wog(r))
+rho_array=np.array(rho_array)
+
+
+
+x_integrate=r_array*cte.au.value*100
+y_integrate=x_integrate*rho_array
+dx=x_integrate[1]-x_integrate[0]
+
+
+print(2*np.pi*romb(y_integrate,dx)/(cte.M_sun.value*1000))
+
+sys.exit()
+
+plt.plot(r_array,rho_array)
+plt.xscale('log')
+plt.yscale('log')
+plt.show()
+
+
 sys.exit()
 
 
 xval=np.linspace(0.04,120,500)
 mu=0.0
 sigma0=0.0059 # Keppler
-Rc=40.0 # Keppler 
+R_exp=40.0 # Keppler 
 hp=0.1 # assian team
 m_b=7.5*(1.898e27/1.989e30) 
 m_c=8.0*(1.898e27/1.989e30) 
@@ -37,7 +82,7 @@ density=[]
 randomList = ['a', 0, 2]
 
 def udens(r):
-    value=sigma0*Rc/r*np.exp(-r/Rc)
+    value=sigma0*R_exp/r*np.exp(-r/R_exp)
     return value
 
 # perturbed density (gap_height)
