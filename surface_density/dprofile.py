@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import sys
 from astropy import constants as const
 
+############################################################
+# Constants and definitions
 sys.exit()
 
 
