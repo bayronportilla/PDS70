@@ -3,39 +3,45 @@ import matplotlib.pyplot as plt
 import sys
 from astropy import constants as cte
 from scipy.integrate import romb
+from chiang_goldreich_model import *
+from height_scale import *
 
 ############################################################
 # Constants and definitions
 m_a=0.76 # Stellar mass (solar masses)
-m_b=(7.5)*cte.M_jup.value/cte.M_sun.value # (solar masses)
-m_c=(8.0)*cte.M_jup.value/cte.M_sun.value # (solar masses)
+m_b=(7.5)*cte.M_jup.value/cte.M_sun.value # Mass of PDS70 b (solar masses)
+m_c=(8.0)*cte.M_jup.value/cte.M_sun.value # Mass of PDS70 c (solar masses)
+a_b=20.6 # Semi-major axis of PDS70 b (AU)
+a_c=34.5 # Semi-major axis of PDS70 c (AU)
 mu=0.0
+alpha=1e-3
+
 
 ############################################################
 # Case 1. No gaps
 R_in=0.04 # Disk's inner limit (AU)
-R_out=120.0 # Disk's inner limit (AU)
+R_out=120.0 # Disk's outer limit (AU)
 R_exp=40.0 # Characteristic radius (AU)
 N_points=1.025e3 # Number of discrete points where density is computed
 M_dust=3.0e-5 # Total dust mass (solar masses)
+r_array=np.linspace(R_in,R_out,N_points)
 
+def surface_density(r):
+    
+    ############################################################
+    #
+    # Returns the unperturbed density (that with no gaps) 
+    # in g/cm2
+    #
+    ############################################################
 
-def density_wog(r):
     exp_value=np.exp(-R_in/R_exp)-np.exp(-R_out/R_exp)
-    sigma_0=M_dust/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2) # g/cm2
-    if 10<r<60:
-        value=1e-20
-    else:
-        value=sigma_0*R_exp/r*np.exp(-r/R_exp)
+    sigma_0=M_dust/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2)
+    value=sigma_0*R_exp/r*np.exp(-r/R_exp)
     return value
 
-
-r_array=np.linspace(R_in,R_out,N_points)
-rho_array=[]
-for r in r_array:
-    rho_array.append(density_wog(r))
-rho_array=np.array(rho_array)
-
+"""
+rho_array=surface_density(r_array)
 
 file=open('surface_density_PDS70.dat','w')
 for i in range(0,len(r_array)):
@@ -45,15 +51,70 @@ x_integrate=r_array*cte.au.value*100
 y_integrate=x_integrate*rho_array
 dx=x_integrate[1]-x_integrate[0]
 
-
 print(2*np.pi*romb(y_integrate,dx)/(cte.M_sun.value*1000))
-
-
 
 plt.plot(r_array,rho_array)
 plt.xscale('log')
 plt.yscale('log')
 plt.show()
+"""
+
+############################################################
+# Case 2. One gap
+class Companion:
+    def __init__(self,mass,pos):
+        self.mass=mass
+        self.pos=pos
+    def gap_width(self):
+        value=0.41*self.pos*(self.mass/m_a)**0.5*(h_scale(m_a,self.pos)/self.pos)**(-3./4)*alpha**(-1/4.)
+        return value 
+    def gap_height(self):
+        K=(self.mass/m_a)**2*(h_scale(m_a,self.pos)/self.pos)**-5*alpha**-1
+        value=surface_density(self.pos)/(1+0.04*K)
+        return value
+    """
+    def gap_limits(self):
+        #width=0.41*self.pos*(self.mass/ms)**0.5*h(self.pos)**-0.75*alpha**-0.25
+        width=0.41*self.pos*(self.mass/ms)**0.5*hp**-0.75*alpha**-0.25
+        ll=self.pos-0.5*width
+        rl=self.pos+0.5*width
+        return [ll,rl]
+    """
+
+def surface_density_one_gap(r,m,a):
+    planet_1=Companion(m,a)
+    try:
+        if R_in<=r<(a-0.5*planet_1.gap_width()) or (a+0.5*planet_1.gap_width())<r<=R_out:
+            value=surface_density(r)
+            return value
+        elif ( (a-0.5*planet_1.gap_width())<r<(a+0.5*planet_1.gap_width()) ):
+            K=(m/m_a)**2*(h_scale(m_a,r)/r)**-5*alpha**-1
+            value=surface_density(r)/(1+0.04*K)
+            return value
+        else:
+            raise ValueError
+    except ValueError:
+        return('r is not between R_in and R_out')                                    
+
+rho_array=[]
+for r in r_array:
+    rho_array.append(surface_density_one_gap(r,m_b,a_b))
+
+plt.plot(r_array,rho_array)
+plt.xscale('log')
+plt.yscale('log')
+plt.show()
+    
+    
+    
+
+sys.exit()
+
+
+
+
+
+
 
 
 sys.exit()
@@ -73,9 +134,6 @@ a_b=20.6
 a_c=34.5
 beta=1.25
 h100=10
-
-print('K_b=',(m_b/ms)**2*hp**-5*alpha**-1)
-print('K_c=',(m_c/ms)**2*hp**-5*alpha**-1)
 
 
 sys.exit()
@@ -101,7 +159,7 @@ def pdens(r,mp):
 density_profile=[]
 r_array=[]
 
-class Source:
+class Companion:
     def __init__(self,mass,pos):
         self.mass=mass
         self.pos=pos
@@ -121,8 +179,8 @@ class Source:
         rl=self.pos+0.5*width
         return [ll,rl]
 
-source_b=Source(m_b,a_b)
-source_c=Source(m_c,a_c)
+source_b=Companion(m_b,a_b)
+source_c=Companion(m_c,a_c)
 
 # If(source_c.gap_limits()[0]<source_b.gap_limits()[1]):
 if(source_c.gap_limits()[0]<source_b.gap_limits()[1]): # Simple overlapping condition
