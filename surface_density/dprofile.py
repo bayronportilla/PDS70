@@ -23,7 +23,10 @@ M_dust=3.0e-5 # Total dust mass (solar masses)
 def density_wog(r):
     exp_value=np.exp(-R_in/R_exp)-np.exp(-R_out/R_exp)
     sigma_0=M_dust/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2) # g/cm2
-    value=sigma_0*R_exp/r*np.exp(-r/R_exp)
+    if 10<r<60:
+        value=1e-20
+    else:
+        value=sigma_0*R_exp/r*np.exp(-r/R_exp)
     return value
 
 
@@ -34,6 +37,9 @@ for r in r_array:
 rho_array=np.array(rho_array)
 
 
+file=open('surface_density_PDS70.dat','w')
+for i in range(0,len(r_array)):
+    file.write('%.15e %.15e\n'%(r_array[i],rho_array[i])) # col1:  r (AU), col2: surf. density (g/cm2)
 
 x_integrate=r_array*cte.au.value*100
 y_integrate=x_integrate*rho_array
@@ -42,7 +48,7 @@ dx=x_integrate[1]-x_integrate[0]
 
 print(2*np.pi*romb(y_integrate,dx)/(cte.M_sun.value*1000))
 
-sys.exit()
+
 
 plt.plot(r_array,rho_array)
 plt.xscale('log')
