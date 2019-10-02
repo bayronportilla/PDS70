@@ -16,13 +16,20 @@ a_c=34.5 # Semi-major axis of PDS70 c (AU)
 mu=0.0
 alpha=1e-3
 
+class Companion:
+    def __init__(self,mass,pos):
+        self.mass=mass
+        self.pos=pos
+    def gap_width(self):
+        value=0.41*self.pos*(self.mass/m_a)**0.5*(h_scale(m_a,self.pos)/self.pos)**(-3./4)*alpha**(-1/4.)
+        return value 
 
 ############################################################
 # Case 1. No gaps
 R_in=0.04 # Disk's inner limit (AU)
 R_out=120.0 # Disk's outer limit (AU)
 R_exp=40.0 # Characteristic radius (AU)
-N_points=1.025e3 # Number of discrete points where density is computed
+N_points=32769#1.025e3 # Number of discrete points where density is computed
 M_dust=3.0e-5 # Total dust mass (solar masses)
 r_array=np.linspace(R_in,R_out,N_points)
 
@@ -31,7 +38,7 @@ def surface_density(r):
     ############################################################
     #
     # Returns the unperturbed density (that with no gaps) 
-    # in g/cm2
+    # in g/cm2. The input is the radial distance in AU.
     #
     ############################################################
 
@@ -57,39 +64,27 @@ plt.plot(r_array,rho_array)
 plt.xscale('log')
 plt.yscale('log')
 plt.show()
-"""
+
+
+sys.exit()
 
 ############################################################
 # Case 2. One gap
-class Companion:
-    def __init__(self,mass,pos):
-        self.mass=mass
-        self.pos=pos
-    def gap_width(self):
-        value=0.41*self.pos*(self.mass/m_a)**0.5*(h_scale(m_a,self.pos)/self.pos)**(-3./4)*alpha**(-1/4.)
-        return value 
-    def gap_height(self):
-        K=(self.mass/m_a)**2*(h_scale(m_a,self.pos)/self.pos)**-5*alpha**-1
-        value=surface_density(self.pos)/(1+0.04*K)
-        return value
-    """
-    def gap_limits(self):
-        #width=0.41*self.pos*(self.mass/ms)**0.5*h(self.pos)**-0.75*alpha**-0.25
-        width=0.41*self.pos*(self.mass/ms)**0.5*hp**-0.75*alpha**-0.25
-        ll=self.pos-0.5*width
-        rl=self.pos+0.5*width
-        return [ll,rl]
-    """
-
 def surface_density_one_gap(r,m,a):
-    planet_1=Companion(m,a)
+    planet_b=Companion(m,a)
+    K=(m/m_a)**2*(h_scale(m_a,a)/a)**-5*alpha**-1
+    d_min_b=a-0.5*planet_b.gap_width()
+    d_max_b=a+0.5*planet_b.gap_width()
+    exp_value= np.exp(-R_in/R_exp)-np.exp(-R_out/R_exp)+\
+               np.exp(-d_max_b/R_exp)-np.exp(-d_min_b/R_exp)+\
+               (np.exp(-d_min_b/R_exp)-np.exp(d_max_b/R_exp))/(1+0.04*K)
+    sigma_0=M_dust/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2)
     try:
-        if R_in<=r<(a-0.5*planet_1.gap_width()) or (a+0.5*planet_1.gap_width())<r<=R_out:
-            value=surface_density(r)
+        if R_in<=r<d_min_b or d_max_b<r<=R_out:
+            value=sigma_0*R_exp/r*np.exp(-r/R_exp)
             return value
-        elif ( (a-0.5*planet_1.gap_width())<r<(a+0.5*planet_1.gap_width()) ):
-            K=(m/m_a)**2*(h_scale(m_a,r)/r)**-5*alpha**-1
-            value=surface_density(r)/(1+0.04*K)
+        elif d_min_b<r<d_max_b :
+            value=(sigma_0*R_exp/r*np.exp(-r/R_exp))/(1+0.04*K)
             return value
         else:
             raise ValueError
@@ -99,14 +94,75 @@ def surface_density_one_gap(r,m,a):
 rho_array=[]
 for r in r_array:
     rho_array.append(surface_density_one_gap(r,m_b,a_b))
+rho_array=np.array(rho_array)
+
+x_integrate=r_array*cte.au.value*100
+y_integrate=x_integrate*rho_array
+dx=x_integrate[1]-x_integrate[0]
+print(2*np.pi*romb(y_integrate,dx)/(cte.M_sun.value*1000))
+
 
 plt.plot(r_array,rho_array)
 plt.xscale('log')
 plt.yscale('log')
 plt.show()
+"""
+
+
+
+############################################################
+# Case 3. Two gaps overlapped 
+def surface_density_two_gaps_overlapped(r,m_b,a_b,m_c,a_c):
+    planet_b=Companion(m_b,a_b)
+    planet_c=Companion(m_c,a_c)
+    K_b=(m_b/m_a)**2*(h_scale(m_a,a_b)/a_b)**-5*alpha**-1
+    K_c=(m_c/m_a)**2*(h_scale(m_a,a_c)/a_c)**-5*alpha**-1
+    d_min_b=a_b-0.5*planet_b.gap_width()
+    d_max_b=a_b+0.5*planet_b.gap_width()
+    d_min_c=a_c-0.5*planet_c.gap_width()
+    d_max_c=a_c+0.5*planet_c.gap_width()
+    delta=1e-15 # Depletion factor (dimensionless)
+    D_1=np.exp(-R_in/R_exp)-np.exp(-d_min_b/R_exp)
+    D_2=np.exp(-d_min_b/R_exp)-np.exp(-d_min_c/R_exp)
+    D_3=np.exp(-d_min_c/R_exp)-np.exp(-d_max_b/R_exp)
+    D_4=np.exp(-d_max_b/R_exp)-np.exp(-d_max_c/R_exp)
+    D_5=np.exp(-d_max_c/R_exp)-np.exp(-R_out/R_exp)
+    exp_value=D_1+D_2/(1+0.04*K_b)+delta*D_3+D_4/(1+0.04*K_c)+D_5
+    sigma_0=M_dust/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2)
+    #value=sigma_0*R_exp/r*np.exp(-r/R_exp)
+    try:
+        if R_in<=r<d_min_b or d_max_c<r<=R_out:
+            value=sigma_0*R_exp/r*np.exp(-r/R_exp)
+            return value
+        elif d_min_b<r<d_min_c:
+            value=(sigma_0*R_exp/r*np.exp(-r/R_exp))/(1+0.04*K_b)
+            return value
+        elif d_min_c<r<d_max_b:
+            value=delta*sigma_0*R_exp/r*np.exp(-r/R_exp)
+            return value
+        elif d_max_b<r<d_max_c:
+            value=(sigma_0*R_exp/r*np.exp(-r/R_exp))/(1+0.04*K_c)
+            return value
+        else:
+            raise ValueError
+    except ValueError:
+        return('r is not between R_in and R_out')                                    
     
-    
-    
+rho_array=[]
+for r in r_array:
+    rho_array.append(surface_density_two_gaps_overlapped(r,m_b,a_b,m_c,a_c))
+
+rho_array=np.array(rho_array)
+
+x_integrate=r_array*cte.au.value*100
+y_integrate=x_integrate*rho_array
+dx=x_integrate[1]-x_integrate[0]
+print(2*np.pi*romb(y_integrate,dx)/(cte.M_sun.value*1000))
+
+plt.plot(r_array,rho_array)
+plt.xscale('log')
+plt.yscale('log')
+plt.show()
 
 sys.exit()
 
