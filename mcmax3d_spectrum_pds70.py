@@ -42,7 +42,7 @@ ax_1.set_ylabel(r'$\lambda F_{\lambda}$ (W/m^2)')
 ax_1.set_ylim(1e-17,1e-12)
 ax_1.set_xlim(0.1,2e3)
 
-fig.savefig('PDS70_MCMax3D_spectrum.png')
+fig.savefig('PDS70_MCMax3D_spectrum_90M_massive_CPD.png')
 plt.show()
 
 
