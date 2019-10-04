@@ -5,6 +5,7 @@ from astropy import constants as cte
 from scipy.integrate import romb
 from chiang_goldreich_model import *
 from height_scale import *
+plt.style.use('fancy')
 
 ############################################################
 # Constants and definitions
@@ -29,7 +30,7 @@ class Companion:
 R_in=0.04 # Disk's inner limit (AU)
 R_out=120.0 # Disk's outer limit (AU)
 R_exp=40.0 # Characteristic radius (AU)
-N_points=32769#1.025e3 # Number of discrete points where density is computed
+N_points=1.025e3 # Number of discrete points where density is computed
 M_dust=3.0e-5 # Total dust mass (solar masses)
 r_array=np.linspace(R_in,R_out,N_points)
 
@@ -121,7 +122,7 @@ def surface_density_two_gaps_overlapped(r,m_b,a_b,m_c,a_c):
     d_max_b=a_b+0.5*planet_b.gap_width()
     d_min_c=a_c-0.5*planet_c.gap_width()
     d_max_c=a_c+0.5*planet_c.gap_width()
-    delta=1e-15 # Depletion factor (dimensionless)
+    delta=1e-20 # Depletion factor (dimensionless)
     D_1=np.exp(-R_in/R_exp)-np.exp(-d_min_b/R_exp)
     D_2=np.exp(-d_min_b/R_exp)-np.exp(-d_min_c/R_exp)
     D_3=np.exp(-d_min_c/R_exp)-np.exp(-d_max_b/R_exp)
@@ -151,18 +152,27 @@ def surface_density_two_gaps_overlapped(r,m_b,a_b,m_c,a_c):
 rho_array=[]
 for r in r_array:
     rho_array.append(surface_density_two_gaps_overlapped(r,m_b,a_b,m_c,a_c))
-
 rho_array=np.array(rho_array)
 
+"""
 x_integrate=r_array*cte.au.value*100
 y_integrate=x_integrate*rho_array
 dx=x_integrate[1]-x_integrate[0]
 print(2*np.pi*romb(y_integrate,dx)/(cte.M_sun.value*1000))
+file=open('surface_density_PDS70.dat','w')
+for i in range(0,len(r_array)):
+    file.write('%.15e %.15e\n'%(r_array[i],rho_array[i])) # col1:  r (AU), col2: surf. density (g/cm2)
+""" 
 
 plt.plot(r_array,rho_array)
 plt.xscale('log')
 plt.yscale('log')
+plt.xlabel('$r$(AU)')
+plt.ylabel('$\Sigma_{\mathrm{dust}}$(g/cm$^2$)')
+plt.ylim(1e-6,1e3)
+plt.savefig('surface_density_PDS70.png')
 plt.show()
+
 
 sys.exit()
 
