@@ -56,8 +56,9 @@ ax_2.set_xscale('log')
 ax_2.set_yscale('log')
 ax_2.set_xlabel(r'$r$ (AU)')
 ax_2.set_ylabel(r'$\Sigma_{\mathrm{dust}}$ (g/cm^2)')
+ax_2.set_ylim(1e-6,1e3)
 
-#fig.savefig('PDS70_MCMax3D_spectrum_3M_narrow_gap_and_bunch.png')
+fig.savefig('new/PDS70_MCMax3D_spectrum_3M_11.png')
 plt.show()
 
 

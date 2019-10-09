@@ -39,7 +39,7 @@ class Companion:
 ############################################################
 # Case 0. Fictitious profile (one gap)
 def fictitious_density_profile(r,d_min,d_max):
-    delta_1=0.05
+    delta_1=0.001
     delta_2=1e-20 # Depletion factor (dimensionless)
     delta_3=1.0
     '''
@@ -110,20 +110,6 @@ def fictitious_density_profile_gaussian(r,sigma,mu):
     except ValueError:
         return('r is not between R_in and R_out')                                    
 
-    
-rho_array=[]
-rho_2=r_array**-1.5
-
-for r in r_array:
-    #rho_array.append(fictitious_density_profile_gaussian(r,8,a_b))
-    rho_array.append(fictitious_density_profile(r,20,30))
-
-plt.plot(r_array,rho_array)
-#plt.plot(r_array,rho_2*rho_array)
-plt.xscale('log')
-plt.yscale('log')
-plt.ylim(1e-6,)
-plt.show()
 
 ############################################################
 # Case 1. No gaps
@@ -251,7 +237,7 @@ def verification_total_mass(m,x,y):
 rho_array=[]
 for r in r_array:
     #rho_array.append(surface_density_two_gaps_overlapped(r,m_b,a_b,m_c,a_c))
-    rho_array.append(fictitious_density_profile(r,20.0,30.0))
+    rho_array.append(fictitious_density_profile(r,20.0,60.0))
 rho_array=np.array(rho_array)
 
 
