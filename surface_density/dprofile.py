@@ -19,9 +19,11 @@ alpha=1e-3
 R_in=0.04 # Disk's inner limit (AU)
 R_out=120.0 # Disk's outer limit (AU)
 R_exp=40.0 # Characteristic radius (AU)
-k=12
+k=10
 N_points=2**k+1 # Number of discrete points where density is computed. (=2^k+1, k integer)
-M_dust=3.0e-5 # Total dust mass (solar masses)
+M_dust=3.0e-4 # Total dust mass (solar masses)
+g=1.0 # Ratio M_disk/M_dust
+M_dust_disk=g*M_dust # Dust mass in the disk
 r_array=np.linspace(R_in,R_out,N_points)
 
 
@@ -35,48 +37,104 @@ class Companion:
         value=0.41*self.pos*(self.mass/m_a)**0.5*(h_scale(m_a,self.pos)/self.pos)**(-3./4)*alpha**(-1/4.)
         return value 
 
+############################################################
+# Verification of the total dust mass retrieved by the 
+# density profile.
+def verification_total_mass(m,x,y):
+
+    ############################################################
+    #
+    # This function performs the surface integral of the density
+    # profile. Inputs are: the total dust mass (the constraint) in
+    # solar masses, the array of distances (in AU) and the array
+    # with the surface density profile array (in g/cm^2). The 
+    # output is the error between the total dust mass generated
+    # by the density profile and the actual value. Therefore, 
+    # if the density profile reproduces exactly the value of 
+    # the constraint, the value returned will be zero. 
+    #
+    # IMPORTANT: the number of points of the density profile array
+    # can not be arbitrary. It should respect the rule: N=2^k+1
+    # with k integer. Also, the values of the independent variable
+    # i.e. the radial distance, must be equally spaced. 
+    #
+    ############################################################
+    
+    x_integrate=x*cte.au.value*100
+    y_integrate=x_integrate*y
+    dx=x_integrate[1]-x_integrate[0]
+    dust_mass_integrated=2*np.pi*romb(y_integrate,dx)/(cte.M_sun.value*1000)
+    #dust_mass_integrated=romb(y_integrate,dx)/(cte.M_sun.value*1000)
+    error=abs(m-dust_mass_integrated)
+    #return dust_mass_integrated
+    return error
+
 
 ############################################################
 # Case 0. Fictitious profile (one gap)
 def fictitious_density_profile(r,d_min,d_max):
-    delta_1=0.001
-    delta_2=1e-20 # Depletion factor (dimensionless)
+    delta_1=0.05
+    delta_2=1e-15 # Depletion factor (dimensionless)
     delta_3=1.0
-    '''
-    exp_value= np.exp(-R_in/R_exp)-np.exp(-R_out/R_exp)+\
-               np.exp(-d_max/R_exp)-np.exp(-d_min/R_exp)+\
-               (np.exp(-d_min/R_exp)-np.exp(d_max/R_exp))*delta
-    '''
     exp_value= delta_1*(np.exp(-R_in/R_exp)-np.exp(-d_min/R_exp))+\
                delta_2*(np.exp(-d_min/R_exp)-np.exp(-d_max/R_exp))+\
                delta_3*(np.exp(-d_max/R_exp)-np.exp(-R_out/R_exp))
     
-    sigma_0=M_dust/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2)
-    
+    sigma_0=M_dust_disk/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2)
+    #sigma_0=M_dust_disk/(R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2)
+    div=1
     try:
-        """
-        if R_in<=r<d_min or d_max<r<=R_out:
-            value=sigma_0*R_exp/r*np.exp(-r/R_exp)
-            return value
-        elif d_min<r<d_max :
-            value=(sigma_0*R_exp/r*np.exp(-r/R_exp))*delta
-            return value
-        else:
-            raise ValueError
-        """
         if R_in<=r<d_min:
-            value=delta_1*sigma_0*R_exp/r*np.exp(-r/R_exp)
+            value=delta_1*sigma_0*R_exp/r*np.exp(-r/R_exp)/div
             return value
         elif d_min<r<d_max :
-            value=delta_2*(sigma_0*R_exp/r*np.exp(-r/R_exp))
+            value=delta_2*(sigma_0*R_exp/r*np.exp(-r/R_exp))/div
             return value
         elif d_max<=r<=R_out:
-            value=delta_3*sigma_0*R_exp/r*np.exp(-r/R_exp)
+            value=delta_3*sigma_0*R_exp/r*np.exp(-r/R_exp)/div
             return value
         else:
             raise ValueError
     except ValueError:
         return('r is not between R_in and R_out')                                    
+
+dmin=20
+dmax=30
+############################################################
+# Generating profiles
+rho_array=[]
+for r in r_array:
+    #rho_array.append(surface_density_two_gaps_overlapped(r,m_b,a_b,m_c,a_c))
+    rho_array.append(fictitious_density_profile(r,dmin,dmax))
+rho_array=np.array(rho_array)
+
+plt.plot(r_array,rho_array)
+plt.xscale('log')
+plt.yscale('log')
+plt.xlabel('$r$(AU)')
+plt.ylabel('$\Sigma_{\mathrm{dust}}$(g/cm$^2$)')
+plt.ylim(1e-6,1e3)
+#plt.savefig('surface_density_PDS70.png')
+plt.show()
+
+print("integrated mass:",verification_total_mass(M_dust_disk,r_array,rho_array))
+print("M dust disk:",M_dust_disk)
+print(verification_total_mass(M_dust_disk,r_array,rho_array)-M_dust_disk)
+
+
+############################################################
+# Saving data
+file=open('surface_density_PDS70_case_2.dat','w')
+if verification_total_mass(M_dust_disk,r_array,rho_array)<1e-6:
+    for i in range(0,len(r_array)):
+        file.write('%.15e %.15e\n'%(r_array[i],rho_array[i])) # col1:r (AU), col2: surf. density (g/cm2)
+    print('File generated!')
+else: 
+    print('Sorry, density profile generated does not reproduce total dust mass.')
+
+sys.exit()
+
+
 
 
 ############################################################
@@ -123,7 +181,7 @@ def surface_density_no_gaps(r):
     ############################################################
 
     exp_value=np.exp(-R_in/R_exp)-np.exp(-R_out/R_exp)
-    sigma_0=M_dust/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2)
+    sigma_0=M_dust_disk/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2)
     value=sigma_0*R_exp/r*np.exp(-r/R_exp)
     return value
 
@@ -149,7 +207,7 @@ def surface_density_one_gap(r,m,a):
     exp_value= np.exp(-R_in/R_exp)-np.exp(-R_out/R_exp)+\
                np.exp(-d_max_b/R_exp)-np.exp(-d_min_b/R_exp)+\
                (np.exp(-d_min_b/R_exp)-np.exp(d_max_b/R_exp))/(1+0.04*K)
-    sigma_0=M_dust/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2)
+    sigma_0=M_dust_disk/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2)
     try:
         if R_in<=r<d_min_b or d_max_b<r<=R_out:
             value=sigma_0*R_exp/r*np.exp(-r/R_exp)
@@ -181,7 +239,7 @@ def surface_density_two_gaps_overlapped(r,m_b,a_b,m_c,a_c):
     D_4=np.exp(-d_max_b/R_exp)-np.exp(-d_max_c/R_exp)
     D_5=np.exp(-d_max_c/R_exp)-np.exp(-R_out/R_exp)
     exp_value=D_1+D_2/(1+0.04*K_b)+delta*D_3+D_4/(1+0.04*K_c)+D_5
-    sigma_0=M_dust/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2)
+    sigma_0=M_dust_disk/(2.0*np.pi*R_exp**2*exp_value) * (cte.M_sun.value*1000/(cte.au.value*100)**2)
     try:
         if R_in<=r<d_min_b or d_max_c<r<=R_out:
             value=sigma_0*R_exp/r*np.exp(-r/R_exp)
@@ -201,66 +259,8 @@ def surface_density_two_gaps_overlapped(r,m_b,a_b,m_c,a_c):
         return('r is not between R_in and R_out')                                    
 
 
-############################################################
-# Verification of the total dust mass retrieved by the 
-# density profile.
-def verification_total_mass(m,x,y):
-
-    ############################################################
-    #
-    # This function performs the surface integral of the density
-    # profile. Inputs are: the total dust mass (the constraint) in
-    # solar masses, the array of distances (in AU) and the array
-    # with the surface density profile array (in g/cm^2). The 
-    # output is the error between the total dust mass generated
-    # by the density profile and the actual value. Therefore, 
-    # if the density profile reproduces exactly the value of 
-    # the constraint, the value returned will be zero. 
-    #
-    # IMPORTANT: the number of points of the density profile array
-    # can not be arbitrary. It should respect the rule: N=2^k+1
-    # with k integer. Also, the values of the independent variable
-    # i.e. the radial distance, must be equally spaced. 
-    #
-    ############################################################
-    
-    x_integrate=x*cte.au.value*100
-    y_integrate=x_integrate*y
-    dx=x_integrate[1]-x_integrate[0]
-    dust_mass_integrated=2*np.pi*romb(y_integrate,dx)/(cte.M_sun.value*1000)
-    error=abs(m-dust_mass_integrated)
-    return error
 
 
-############################################################
-# Generating profiles
-rho_array=[]
-for r in r_array:
-    #rho_array.append(surface_density_two_gaps_overlapped(r,m_b,a_b,m_c,a_c))
-    rho_array.append(fictitious_density_profile(r,20.0,60.0))
-rho_array=np.array(rho_array)
-
-
-############################################################
-# Saving data
-file=open('surface_density_PDS70.dat','w')
-if verification_total_mass(M_dust,r_array,rho_array)<1e-6:
-    for i in range(0,len(r_array)):
-        file.write('%.15e %.15e\n'%(r_array[i],rho_array[i])) # col1:r (AU), col2: surf. density (g/cm2)
-    print('File generated!')
-else: 
-    print('Sorry, density profile generated does not reproduce total dust mass.')
-
-sys.exit()
-
-plt.plot(r_array,rho_array)
-plt.xscale('log')
-plt.yscale('log')
-plt.xlabel('$r$(AU)')
-plt.ylabel('$\Sigma_{\mathrm{dust}}$(g/cm$^2$)')
-plt.ylim(1e-6,1e3)
-#plt.savefig('surface_density_PDS70.png')
-plt.show()
 
 
 sys.exit()
