@@ -26,7 +26,10 @@ M_dust=3.0e-5 # Total dust mass (solar masses)
 g=1.0 # Ratio M_disk/M_dust
 M_dust_disk=g*M_dust # Dust mass in the disk
 r_array=np.linspace(R_in,R_out,N_points)
-
+mu=40
+beta=20
+alpha=8
+delta=1-1e-15 # 1e-15: depletion factor of sigma at r=mu with respect to the unperturbed density
 
 ############################################################
 # Define class Companion for the planets
@@ -38,9 +41,7 @@ class Companion:
         value=0.41*self.pos*(self.mass/m_a)**0.5*(h_scale(m_a,self.pos)/self.pos)**(-3./4)*alpha**(-1/4.)
         return value 
 
-############################################################
-# Verification of the total dust mass retrieved by the 
-# density profile.
+
 def verification_total_mass(m,x,y):
 
     ############################################################
@@ -69,37 +70,6 @@ def verification_total_mass(m,x,y):
     error=abs(m-dust_mass_integrated)
     return error
 
-"""
-############################################################
-# Case 0. Fictitious profile (gaussian gap)
-def fictitious_density_profile_gaussian(r,sigma,mu):
-    delta=1e-20 # Depletion factor (dimensionless)
-    exp_value=-0.5*(r-mu)**2/sigma**2
-    value_o=(np.exp(exp_value)/(sigma*(2*np.pi)**0.5))
-    sigma_0=1
-    return value_o
-
-plt.plot(r_array,fictitious_density_profile_gaussian(r_array,10,20))
-plt.xscale('log')
-plt.yscale('log')
-plt.show()
-sys.exit()
-"""
-
-
-############################################################
-# Subbotin distribution
-
-mu=40
-beta=20
-alpha_1=8
-alpha_2=16
-alpha_3=80
-delta=1-1e-15
-
-def subbotin_function(r,alpha,beta,mu):
-    value=alpha/(2*beta*gamma(1/alpha))*np.exp(-abs((r-mu)/beta)**alpha)
-    return value
 
 def subbotin_density_profile(r,alpha,beta,mu,delta):
   
@@ -110,11 +80,12 @@ def subbotin_density_profile(r,alpha,beta,mu,delta):
     # parametrized by alpha (measures how smooth is the transition
     # between the disk and the gap, it's given in AU), beta 
     # (2*beta is the gap width in AU) and mu (the central position
-    # of the gap in AU). The degree of depletion iscontrolled by 
+    # of the gap in AU). The degree of depletion is controlled by 
     # delta. r is the input distance array in AU and the return is 
-    # the surface density in g/cm^2.
+    # the surface density in g/cm^2. r must satisfy R_in<=r<=R_out.
     # 
     ############################################################
+
     def integrand(x):
         value=np.exp(-x/R_exp)*(1-delta*np.exp(-abs((x-mu)/beta)**alpha))
         return value
@@ -122,67 +93,41 @@ def subbotin_density_profile(r,alpha,beta,mu,delta):
     Sigma_0=M_dust/(2*np.pi*R_exp*integrated_value)*(cte.M_sun.value*1000/(cte.au.value*100)**2)
     return Sigma_0*R_exp/r*np.exp(-r/R_exp)*(1-delta*np.exp(-abs((r-mu)/beta)**alpha))
   
+############################################################
+# Generating density profiles
 
-#print(subbotin_density_profile(r_array,alpha,beta,mu,delta))
-print(verification_total_mass(M_dust,r_array,subbotin_density_profile(r_array,alpha_1,beta,mu,delta)))
-sys.exit()
-fig,((ax_1,ax_2))=plt.subplots(1,2,figsize=(14,6))
-ax_1.plot(r_array,subbotin_density_profile(r_array,alpha_1,beta,mu,delta),
-          label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_1,beta)))
-ax_1.plot(r_array,subbotin_density_profile(r_array,alpha_2,beta,mu,delta),
-          label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_2,beta)))
-ax_1.plot(r_array,subbotin_density_profile(r_array,alpha_3,beta,mu,delta),
-          label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_3,beta)))
-ax_1.set_xscale('log')
-ax_1.set_yscale('log')
-ax_1.set_xlabel(r'$r$ (AU)')
-ax_1.set_ylabel(r'$\Sigma_{\mathrm{dust}}$ (g/cm$^2$)')
-ax_1.legend()
-ax_1.set_ylim(1e-6,)
-
-ax_2.plot(r_array,subbotin_density_profile(r_array,alpha_1,beta,mu,delta),
-          label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_1,beta)))
-ax_2.plot(r_array,subbotin_density_profile(r_array,alpha_2,beta,mu,delta),
-          label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_2,beta)))
-ax_2.plot(r_array,subbotin_density_profile(r_array,alpha_3,beta,mu,delta),
-          label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_3,beta)))
-ax_2.legend()
-ax_2.set_xlabel(r'$r$ (AU)')
-ax_2.set_ylabel(r'$\Sigma_{\mathrm{dust}}$ (g/cm$^2$)')
-ax_2.set_ylim(0,0.01)
-#ax_2.xscale('log')
-#plt.plot(r_array,subbotin_density_profile(r_array,80,beta,mu),label=('alpha=%.2f'%80))
-#plt.plot(r_array,subbotin_density_profile(r_array,20,beta,mu),label=('alpha=%.2f'%20))
+alpha=8.0
+beta=10
+mu=30.0
 
 
-#plt.plot(r_array,subbotin_function(r_array,alpha,beta,mu))
-#plt.xscale('log')
-#plt.yscale('log')
-plt.legend()
-plt.show()
-sys.exit()    
-f=open("surface_density_PDS70_toy.dat",'w')
-
-
-rho_toy=[]
-for r in r_array_2:
-    rho_toy.append(subbotin_density_profile(r,alpha,beta,pos))
-
-
-print(verification_total_mass(M_dust_disk,r_array_2,rho_toy))
-
-for i in range(0,len(r_array_2)):
-    f.write('%.15f %.15f\n'%(r_array_2[i],rho_toy[i]))
-plt.plot(r_array_2,subbotin_density_profile(r_array_2,alpha,beta,pos),label=('alpha=%1.2f \n w=%1.2f'%(alpha,beta)))
-sys.exit()
-#plt.plot(r_array_2,subbotin_density_profile(r_array_2,8,5,pos),label=('alpha=%1.2f \n w=%1.2f'%(8,5)))
-#plt.plot(r_array_2,subbotin_density_profile(r_array_2,8,2,pos),label=('alpha=%1.2f \n w=%1.2f'%(8,2)))
+plt.plot(r_array,subbotin_density_profile(r_array,alpha,beta,mu,delta))
 plt.xscale('log')
 plt.yscale('log')
-plt.ylim(1e-6,)
-plt.legend()
+plt.xlabel('$r$(AU)')
+plt.ylabel('$\Sigma_{\mathrm{dust}}$(g/cm$^2$)')
+#plt.ylim(1e-6,1e3)
+#plt.savefig('surface_density_PDS70.png')
 plt.show()
-sys.exit()
+
+
+
+"""
+if verification_total_mass(M_dust,r_array,subbotin_density_profile(r_array,alpha,beta,mu,delta))<1e-6:
+    file=open('surface_density_PDS70_%.1f_%.1f_%.1f.dat'%(alpha,beta,mu),'w')
+    for r in r_array:
+        file.write('%.15e %.15e\n'%(r,subbotin_density_profile(r,alpha,beta,mu,delta)))
+    file.close()
+    print('File generated!')
+else:
+    print('Sorry, density profile generated does not reproduce total dust mass.')
+"""
+
+
+sys.exit()    
+
+
+
 
     
     
@@ -342,11 +287,6 @@ def surface_density_two_gaps_overlapped(r,m_b,a_b,m_c,a_c):
             raise ValueError
     except ValueError:
         return('r is not between R_in and R_out')                                    
-
-
-
-
-
 
 sys.exit()
 
