@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 from astropy import constants as cte
-from scipy.integrate import romb
+from scipy.integrate import romb,quadrature
 from scipy.special import gamma
 from chiang_goldreich_model import *
 from height_scale import *
@@ -48,14 +48,14 @@ def verification_total_mass(m,x,y):
     # This function performs the surface integral of the density
     # profile. Inputs are: the total dust mass (the constraint) in
     # solar masses, the array of distances (in AU) and the array
-    # with the surface density profile array (in g/cm^2). The 
+    # with the surface density profile (in g/cm^2). The 
     # output is the error between the total dust mass generated
     # by the density profile and the actual value. Therefore, 
     # if the density profile reproduces exactly the value of 
-    # the constraint, the value returned will be zero. 
+    # the constraint, the returned value will be zero. 
     #
     # IMPORTANT: the number of points of the density profile array
-    # can not be arbitrary. It should respect the rule: N=2^k+1
+    # (N) can not be arbitrary. It should respect the rule: N=2^k+1
     # with k integer. Also, the values of the independent variable
     # i.e. the radial distance, must be equally spaced. 
     #
@@ -67,8 +67,7 @@ def verification_total_mass(m,x,y):
     dust_mass_integrated=2*np.pi*romb(y_integrate,dx)/(cte.M_sun.value*1000)
     #dust_mass_integrated=romb(y_integrate,dx)/(cte.M_sun.value*1000)
     error=abs(m-dust_mass_integrated)
-    return dust_mass_integrated
-    #return error
+    return error
 
 """
 ############################################################
@@ -90,30 +89,49 @@ sys.exit()
 
 ############################################################
 # Subbotin distribution
-def subbotin_function(r,alpha,beta,mu):
-    value=alpha/(2*beta*gamma(1/alpha))*np.exp(-abs((r-mu)/beta)**alpha)
-    return value
 
-def subbotin_density_profile(r,alpha,beta,mu):
-    max_value=subbotin_function(mu,alpha,beta,mu)
-    depletion=1-1e-15
-    factor=-depletion/max_value
-    return R_exp/r*np.exp(-r/R_exp)*(factor*subbotin_function(r,alpha,beta,mu)+1)
-
-pos=40
+mu=40
 beta=20
 alpha_1=8
 alpha_2=16
 alpha_3=80
-#beta_2=20
+delta=1-1e-15
 
+def subbotin_function(r,alpha,beta,mu):
+    value=alpha/(2*beta*gamma(1/alpha))*np.exp(-abs((r-mu)/beta)**alpha)
+    return value
 
+def subbotin_density_profile(r,alpha,beta,mu,delta):
+  
+    ############################################################
+    #
+    # Find the surface density of a disk with a gap modelled 
+    # through the Subbotin (or Generalized normal) distribution
+    # parametrized by alpha (measures how smooth is the transition
+    # between the disk and the gap, it's given in AU), beta 
+    # (2*beta is the gap width in AU) and mu (the central position
+    # of the gap in AU). The degree of depletion iscontrolled by 
+    # delta. r is the input distance array in AU and the return is 
+    # the surface density in g/cm^2.
+    # 
+    ############################################################
+    def integrand(x):
+        value=np.exp(-x/R_exp)*(1-delta*np.exp(-abs((x-mu)/beta)**alpha))
+        return value
+    integrated_value=quadrature(integrand,R_in,R_out,maxiter=1000)[0]
+    Sigma_0=M_dust/(2*np.pi*R_exp*integrated_value)*(cte.M_sun.value*1000/(cte.au.value*100)**2)
+    return Sigma_0*R_exp/r*np.exp(-r/R_exp)*(1-delta*np.exp(-abs((r-mu)/beta)**alpha))
+  
+
+#print(subbotin_density_profile(r_array,alpha,beta,mu,delta))
+print(verification_total_mass(M_dust,r_array,subbotin_density_profile(r_array,alpha_1,beta,mu,delta)))
+sys.exit()
 fig,((ax_1,ax_2))=plt.subplots(1,2,figsize=(14,6))
-ax_1.plot(r_array,subbotin_density_profile(r_array,alpha_1,beta,pos),
+ax_1.plot(r_array,subbotin_density_profile(r_array,alpha_1,beta,mu,delta),
           label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_1,beta)))
-ax_1.plot(r_array,subbotin_density_profile(r_array,alpha_2,beta,pos),
+ax_1.plot(r_array,subbotin_density_profile(r_array,alpha_2,beta,mu,delta),
           label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_2,beta)))
-ax_1.plot(r_array,subbotin_density_profile(r_array,alpha_3,beta,pos),
+ax_1.plot(r_array,subbotin_density_profile(r_array,alpha_3,beta,mu,delta),
           label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_3,beta)))
 ax_1.set_xscale('log')
 ax_1.set_yscale('log')
@@ -122,22 +140,22 @@ ax_1.set_ylabel(r'$\Sigma_{\mathrm{dust}}$ (g/cm$^2$)')
 ax_1.legend()
 ax_1.set_ylim(1e-6,)
 
-ax_2.plot(r_array,subbotin_density_profile(r_array,alpha_1,beta,pos),
+ax_2.plot(r_array,subbotin_density_profile(r_array,alpha_1,beta,mu,delta),
           label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_1,beta)))
-ax_2.plot(r_array,subbotin_density_profile(r_array,alpha_2,beta,pos),
+ax_2.plot(r_array,subbotin_density_profile(r_array,alpha_2,beta,mu,delta),
           label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_2,beta)))
-ax_2.plot(r_array,subbotin_density_profile(r_array,alpha_3,beta,pos),
+ax_2.plot(r_array,subbotin_density_profile(r_array,alpha_3,beta,mu,delta),
           label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_3,beta)))
 ax_2.legend()
 ax_2.set_xlabel(r'$r$ (AU)')
 ax_2.set_ylabel(r'$\Sigma_{\mathrm{dust}}$ (g/cm$^2$)')
-ax_2.set_ylim(0,0.2)
+ax_2.set_ylim(0,0.01)
 #ax_2.xscale('log')
-#plt.plot(r_array,subbotin_density_profile(r_array,80,beta,pos),label=('alpha=%.2f'%80))
-#plt.plot(r_array,subbotin_density_profile(r_array,20,beta,pos),label=('alpha=%.2f'%20))
+#plt.plot(r_array,subbotin_density_profile(r_array,80,beta,mu),label=('alpha=%.2f'%80))
+#plt.plot(r_array,subbotin_density_profile(r_array,20,beta,mu),label=('alpha=%.2f'%20))
 
 
-#plt.plot(r_array,subbotin_function(r_array,alpha,beta,pos))
+#plt.plot(r_array,subbotin_function(r_array,alpha,beta,mu))
 #plt.xscale('log')
 #plt.yscale('log')
 plt.legend()
