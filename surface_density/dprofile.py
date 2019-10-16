@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import sys
 from astropy import constants as cte
 from scipy.integrate import romb
+from scipy.special import gamma
 from chiang_goldreich_model import *
 from height_scale import *
 plt.style.use('fancy')
@@ -19,9 +20,9 @@ alpha=1e-3
 R_in=0.04 # Disk's inner limit (AU)
 R_out=120.0 # Disk's outer limit (AU)
 R_exp=40.0 # Characteristic radius (AU)
-k=10
+k=11
 N_points=2**k+1 # Number of discrete points where density is computed. (=2^k+1, k integer)
-M_dust=3.0e-4 # Total dust mass (solar masses)
+M_dust=3.0e-5 # Total dust mass (solar masses)
 g=1.0 # Ratio M_disk/M_dust
 M_dust_disk=g*M_dust # Dust mass in the disk
 r_array=np.linspace(R_in,R_out,N_points)
@@ -66,8 +67,108 @@ def verification_total_mass(m,x,y):
     dust_mass_integrated=2*np.pi*romb(y_integrate,dx)/(cte.M_sun.value*1000)
     #dust_mass_integrated=romb(y_integrate,dx)/(cte.M_sun.value*1000)
     error=abs(m-dust_mass_integrated)
-    #return dust_mass_integrated
-    return error
+    return dust_mass_integrated
+    #return error
+
+"""
+############################################################
+# Case 0. Fictitious profile (gaussian gap)
+def fictitious_density_profile_gaussian(r,sigma,mu):
+    delta=1e-20 # Depletion factor (dimensionless)
+    exp_value=-0.5*(r-mu)**2/sigma**2
+    value_o=(np.exp(exp_value)/(sigma*(2*np.pi)**0.5))
+    sigma_0=1
+    return value_o
+
+plt.plot(r_array,fictitious_density_profile_gaussian(r_array,10,20))
+plt.xscale('log')
+plt.yscale('log')
+plt.show()
+sys.exit()
+"""
+
+
+############################################################
+# Subbotin distribution
+def subbotin_function(r,alpha,beta,mu):
+    value=alpha/(2*beta*gamma(1/alpha))*np.exp(-abs((r-mu)/beta)**alpha)
+    return value
+
+def subbotin_density_profile(r,alpha,beta,mu):
+    max_value=subbotin_function(mu,alpha,beta,mu)
+    depletion=1-1e-15
+    factor=-depletion/max_value
+    return R_exp/r*np.exp(-r/R_exp)*(factor*subbotin_function(r,alpha,beta,mu)+1)
+
+pos=40
+beta=20
+alpha_1=8
+alpha_2=16
+alpha_3=80
+#beta_2=20
+
+
+fig,((ax_1,ax_2))=plt.subplots(1,2,figsize=(14,6))
+ax_1.plot(r_array,subbotin_density_profile(r_array,alpha_1,beta,pos),
+          label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_1,beta)))
+ax_1.plot(r_array,subbotin_density_profile(r_array,alpha_2,beta,pos),
+          label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_2,beta)))
+ax_1.plot(r_array,subbotin_density_profile(r_array,alpha_3,beta,pos),
+          label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_3,beta)))
+ax_1.set_xscale('log')
+ax_1.set_yscale('log')
+ax_1.set_xlabel(r'$r$ (AU)')
+ax_1.set_ylabel(r'$\Sigma_{\mathrm{dust}}$ (g/cm$^2$)')
+ax_1.legend()
+ax_1.set_ylim(1e-6,)
+
+ax_2.plot(r_array,subbotin_density_profile(r_array,alpha_1,beta,pos),
+          label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_1,beta)))
+ax_2.plot(r_array,subbotin_density_profile(r_array,alpha_2,beta,pos),
+          label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_2,beta)))
+ax_2.plot(r_array,subbotin_density_profile(r_array,alpha_3,beta,pos),
+          label=(r'$\alpha=%.1f$, \, $\beta=%.1f$'%(alpha_3,beta)))
+ax_2.legend()
+ax_2.set_xlabel(r'$r$ (AU)')
+ax_2.set_ylabel(r'$\Sigma_{\mathrm{dust}}$ (g/cm$^2$)')
+ax_2.set_ylim(0,0.2)
+#ax_2.xscale('log')
+#plt.plot(r_array,subbotin_density_profile(r_array,80,beta,pos),label=('alpha=%.2f'%80))
+#plt.plot(r_array,subbotin_density_profile(r_array,20,beta,pos),label=('alpha=%.2f'%20))
+
+
+#plt.plot(r_array,subbotin_function(r_array,alpha,beta,pos))
+#plt.xscale('log')
+#plt.yscale('log')
+plt.legend()
+plt.show()
+sys.exit()    
+f=open("surface_density_PDS70_toy.dat",'w')
+
+
+rho_toy=[]
+for r in r_array_2:
+    rho_toy.append(subbotin_density_profile(r,alpha,beta,pos))
+
+
+print(verification_total_mass(M_dust_disk,r_array_2,rho_toy))
+
+for i in range(0,len(r_array_2)):
+    f.write('%.15f %.15f\n'%(r_array_2[i],rho_toy[i]))
+plt.plot(r_array_2,subbotin_density_profile(r_array_2,alpha,beta,pos),label=('alpha=%1.2f \n w=%1.2f'%(alpha,beta)))
+sys.exit()
+#plt.plot(r_array_2,subbotin_density_profile(r_array_2,8,5,pos),label=('alpha=%1.2f \n w=%1.2f'%(8,5)))
+#plt.plot(r_array_2,subbotin_density_profile(r_array_2,8,2,pos),label=('alpha=%1.2f \n w=%1.2f'%(8,2)))
+plt.xscale('log')
+plt.yscale('log')
+plt.ylim(1e-6,)
+plt.legend()
+plt.show()
+sys.exit()
+
+    
+    
+
 
 
 ############################################################
@@ -99,7 +200,7 @@ def fictitious_density_profile(r,d_min,d_max):
         return('r is not between R_in and R_out')                                    
 
 dmin=20
-dmax=30
+dmax=40
 ############################################################
 # Generating profiles
 rho_array=[]
@@ -133,40 +234,6 @@ else:
     print('Sorry, density profile generated does not reproduce total dust mass.')
 
 sys.exit()
-
-
-
-
-############################################################
-# Case 0. Fictitious profile (gaussian gap)
-def fictitious_density_profile_gaussian(r,sigma,mu):
-    delta=1e-20 # Depletion factor (dimensionless)
-    exp_value=-0.5*(r-mu)**2/sigma**2
-    value_o=-0.99999999999999999999*(np.exp(exp_value)/(sigma*(2*np.pi)**0.5))+1
-    sigma_0=1
-
-    try:
-        """
-        if R_in<=r<d_min or d_max<r<=R_out:
-            value=sigma_0*R_exp/r*np.exp(-r/R_exp)
-            return value
-        elif d_min<r<d_max :
-            value=(sigma_0*R_exp/r*np.exp(-r/R_exp))*delta
-            return value
-        """
-        if R_in<=r<=a_b:
-            value=sigma_0*R_exp/r*np.exp(-r/R_exp)
-            return value
-        #elif a_b<r<=29.0:
-        #    value=1e-10
-        #    return value
-        elif a_b<r<=R_out:
-            value=sigma_0*R_exp/r*np.exp(-r/R_exp)
-            return value*value_o*sigma*(2*np.pi)**0.5
-        else:
-            raise ValueError
-    except ValueError:
-        return('r is not between R_in and R_out')                                    
 
 
 ############################################################
