@@ -1,14 +1,12 @@
 #!/bin/bash
 
-#sim_num=1
+python3 plot_SED.py $1 $2 $3
+mkdir plots/run_$1_$2_$3
+mv fig.png plots/run_$1_$2_$3/run_$1_$2_$3.png
 for item in "$@"; 
-do
-echo $item
+do    
+    rm spectrum_PDS70_star_$item.dat
+    rm spectrum_PDS70_system_$item.dat
 done
-
-
-#echo $sim_num
-#cd /data/users/bportilla/runs/PDS70_runs/run_$sim_num
-#less input.dat
-
+rm *~
 
