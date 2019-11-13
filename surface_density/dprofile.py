@@ -15,19 +15,20 @@ m_b=(7.5)*cte.M_jup.value/cte.M_sun.value # Mass of PDS70 b (solar masses)
 m_c=(8.0)*cte.M_jup.value/cte.M_sun.value # Mass of PDS70 c (solar masses)
 a_b=20.6 # Semi-major axis of PDS70 b (AU)
 a_c=34.5 # Semi-major axis of PDS70 c (AU)
-mu=0.0
-alpha=1e-3
+#mu=0.0
+#alpha=1e-3
 R_in=0.04 # Disk's inner limit (AU)
 R_out=120.0 # Disk's outer limit (AU)
 R_exp=40.0 # Characteristic radius (AU)
-k=11
+k=12
 N_points=2**k+1 # Number of discrete points where density is computed. (=2^k+1, k integer)
-M_dust=3.0e-5 # Total dust mass (solar masses)
+M_dust=5.0e-5 # Total dust mass (solar masses)
+mass_type='min'
 g=1.0 # Ratio M_disk/M_dust
 M_dust_disk=g*M_dust # Dust mass in the disk
 r_array=np.linspace(R_in,R_out,N_points)
-mu=40
-beta=20
+mu=30
+beta=10
 alpha=8
 delta=1-1e-15 # 1e-15: depletion factor of sigma at r=mu with respect to the unperturbed density
 
@@ -112,16 +113,15 @@ plt.show()
 
 
 
-"""
 if verification_total_mass(M_dust,r_array,subbotin_density_profile(r_array,alpha,beta,mu,delta))<1e-6:
-    file=open('surface_density_PDS70_%.1f_%.1f_%.1f.dat'%(alpha,beta,mu),'w')
+    file=open('surface_density_PDS70_%.1f_%.1f_%.1f_%s.dat'%(alpha,beta,mu,mass_type),'w')
     for r in r_array:
         file.write('%.15e %.15e\n'%(r,subbotin_density_profile(r,alpha,beta,mu,delta)))
     file.close()
     print('File generated!')
 else:
     print('Sorry, density profile generated does not reproduce total dust mass.')
-"""
+
 
 
 sys.exit()    
