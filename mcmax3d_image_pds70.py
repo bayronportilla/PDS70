@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import sys
 plt.style.use('fancy')
 
-print(display_image('/data/users/bportilla/runs/MCMax3D_images/run_88/output/RTout0001_000863.31.fits.gz','Q'))
+print(display_image('/data/users/bportilla/runs/MCMax3D_images/run_88','PI'))
 
 
 
