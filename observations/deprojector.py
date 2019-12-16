@@ -5,10 +5,15 @@ from astropy.io import fits
 import matplotlib.pyplot as plt
 import sys
 
-hdulist=fits.open("PDS_70_2016-03-26_QPHI_CROPPED.fits")
-data=hdulist[0].data
-#hdulist=fits.open("PDS70_cont-final.fits")
-#data=hdulist[0].data[0][0]
+############################################################
+# Q_phi
+#hdulist=fits.open("PDS_70_2016-03-26_QPHI_CROPPED.fits")
+#data=hdulist[0].data
+
+############################################################
+# ALMA
+hdulist=fits.open("PDS70_cont-final.fits")
+data=hdulist[0].data[0][0]
 
 class Pixel:
     # constructor
@@ -41,8 +46,6 @@ class Pixel:
     def gotocorner(self,xmin,ymin): # method
         self.x=int(self.x+abs(xmin))
         self.y=int(self.y+abs(ymin))
-        
-    #def originatcorner(self,xmin):
 
 parray=[]
 for i in range(0,data.shape[0]):
@@ -72,15 +75,9 @@ for p in parray:
     data_deprojected[p.x][p.y]=p.z
 
 hdu=fits.PrimaryHDU(data_deprojected)
-#hdu1=fits.HDUlist([hdu])
-hdu.writeto("Jband_deprojected.fits")
-sys.exit()
 
-plt.imshow(data_deprojected,origin="lower")
-#plt.imshow(data_deprojected)
-plt.axes().set_aspect("equal")
-plt.show()
-
+#hdu.writeto("jband_deprojected.fits")
+hdu.writeto("alma_deprojected.fits")
 
 
     
