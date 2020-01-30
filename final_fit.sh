@@ -1,5 +1,5 @@
 #!/bin/bash
-
+: '
 # Create run dir
 rm -rf /data/users/bportilla/runs/run_amax
 mkdir /data/users/bportilla/runs/run_amax
@@ -46,7 +46,8 @@ python3 cflux_alma_local.py
 echo "cflux of alma done at three level">>sim_log.txt
 python3 cflux_jband_local.py
 echo "cflux of jband done at three level">>sim_log.txt
-lim_alma_error=80
+
+lim_alma_error=28
 error_alma=$(python3 cdm.py)
 echo "Initial alma error computed">>sim_log.txt
 echo "$error_alma">>sim_log.txt
@@ -72,12 +73,13 @@ echo "Iterations at three level done">>sim_log.txt
 # Plotting result at three level
 python3 profiles_modeled_local.py
 echo "Everything done at three level">>sim_log.txt
-
+'
 cd /data/users/bportilla/runs/run_amax
 
 # Creating folders for varying amax 
-for var in 100.0 10.0
+for var in 10.0 1.0 0.1 0.05
 do 
+    rm -rf /data/users/bportilla/runs/run_amax/amax_$var
     mkdir /data/users/bportilla/runs/run_amax/amax_$var
     cd /data/users/bportilla/runs/run_amax/amax_$var
     module load anaconda3
@@ -105,7 +107,8 @@ do
     echo "$error_alma">>sim_log_$var.txt
     echo "Starting alma fitting at amax=$var">>sim_log_$var.txt
     # Fitting alma radial profile for particular amax
-    while [ $error_alma -gt $lim_alma_error ]
+    niter=0
+    while [ $error_alma -gt $lim_alma_error ] && [ $niter -lt 4]
     do
 	python3 interpol_local.py 
 	./run_thermal.sh 
@@ -117,6 +120,7 @@ do
 	let error_alma=$current_error
 	echo "Iteration finished">>sim_log_$var.txt
 	echo "$error_alma">>sim_log_$var.txt
+	((niter++))
     done
     echo "Iterations done">>sim_log_$var.txt
     python3 profiles_modeled_local.py
