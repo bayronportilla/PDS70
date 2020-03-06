@@ -5,9 +5,23 @@ from astropy.io import fits
 from photutils import EllipticalAnnulus,CircularAnnulus,EllipticalAperture,RectangularAperture
 from photutils import aperture_photometry
 from mcmax3d_analysis.mcmax3d_convolution import convolve_image
+import matplotlib.gridspec as gridspec
 import sys
 from astropy.table import Table
 plt.style.use('fancy')
+
+def toAU(x,y,xc,yc,pxsize,d):
+    dr=((x-xc)**2+(y-yc)**2)**0.5
+    dr=(dr*pxsize)
+    dr=(dr*units.arcsec).to(units.rad).value
+    dr=dr*((d*units.pc).to(units.au).value)
+    return dr
+
+def toPX(l,pxsize,d):
+    dl=(l*units.au).to(units.pc).value
+    dl=((dl/d)*units.rad).to(units.arcsec).value
+    dl=dl/pxsize
+    return dl
 
 ############################################################
 # Get radial profiles of the observation
@@ -38,36 +52,31 @@ yc=0.5*data_obs.shape[1] # Image center in data coordinates
 dr=1.0 # Width of the annulus
 w=1.0
 h=1.0
-limx=40
+lim=100
+lim=toPX(lim,pxsize,d)
 InRad=np.pi/180.0
 xc_array=[]
 yc_array=[]
 
-xval=xc
-yval=yc
-xc_array.append(xval)
-yc_array.append(yval)
+x0=xc
+y0=yc
+xc_array.append(x0)
+yc_array.append(y0)
 
-while(xval<2*xc):
-    xnext=h*np.cos(pa*InRad)
-    ynext=h*np.sin(pa*InRad)
-    xc_array.append(x)
+for l in np.arange(1,lim,1):
+    
+    xval=x0+l*np.cos(angle_annulus+1.0*np.pi)
+    yval=y0+l*np.sin(angle_annulus+1.0*np.pi)
+    xc_array.append(xval)
     yc_array.append(yval)
-
-print(xc_array)
     
-    
-sys.exit()
-    
-
-positions=[(i,j) for (i,j) in zip(xc_array+xc,yc_array+yc)]
+positions=[(i,j) for (i,j) in zip(xc_array,yc_array)]
 
 InRad=np.pi/180.0
-apertures=RectangularAperture(positions,w,h,pa*InRad) 
+#apertures=RectangularAperture(positions,w,h,pa*InRad) 
+apertures=RectangularAperture(positions,w,h,angle_annulus) 
 #apertures=[RectangularAperture((i,j),w,h,pa*InRad) for (i,j) in zip(xc_array+xc,yc_array+yc) ]
 #aperture=RectangularAperture((yc,xc),w,h,angle_annulus)
-
-
 
 ############################################################
 # Do a check
@@ -75,46 +84,31 @@ a=0.01
 vmin=np.percentile(data_obs,a)
 vmax=np.percentile(data_obs,100-a)
 plt.imshow(data_obs,clim=(vmin,vmax))
+plt.xlim()
 plt.title("Image observation")
 apertures.plot(color='red',lw=1)
 plt.show()
 
 
-"""
-# Radial distance of each annulus
-r_arcsec=[(j+0.5*(i-j))*pxsize for (i,j) in zip(a_out_array,a_in_array)] # arcsec
-r_rad=[(i*units.arcsec).to(units.rad).value for i in r_arcsec] # rad
-r_au=[((i*d)*units.pc).to(units.au).value for i in r_rad] # AU
-
-# Creating numpy arrays
-r_au=np.array(r_au)
-r_arcsec=np.array(r_arcsec)
-"""
-
 phot_table=aperture_photometry(data_obs,apertures)
-rdist=[(phot_table['xcenter'][i].value**2+phot_table['ycenter'][i].value**2)**0.5 for i in range(0,len(phot_table))]
+r_au=[toAU(phot_table['xcenter'][i].value,phot_table['ycenter'][i].value,xc,yc,pxsize,d) for i in range(0,len(phot_table))]
 brightness=[phot_table['aperture_sum'][i] for i in range(0,len(phot_table))]
+brightness=np.array(brightness)
 
-plt.plot(rdist,brightness,'.')
-plt.show()
 
-sys.exit()
-for i in range(0,len(brightness)):
-    brightness[i]=brightness[i]/apertures[i].area()
-
-"""
 ############################################################
 # Creating brightness profile normalized
-fac=1/1.63114
+fac=1/3.41577
 brightness=brightness*fac
 fig=plt.figure()
 ax=plt.axes()
-ax.plot(r_au,brightness,'.')
+ax.plot(r_au,brightness,'-')
 ax.set_xlabel(r"Projected radial distance (AU)")
 ax.set_ylabel("Density flux (a.u.)")
 ax.set_title("Radial profile observation")
+ax.set_ylim(-0.1,5)
 plt.show()
-"""
+
 sys.exit()
 ############################################################
 # Creating file
