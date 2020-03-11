@@ -10,7 +10,7 @@ Nzones=3
 
 ############################################################
 # Working dir
-folder='/data/users/bportilla/runs/final_runs/run_148/Particles'
+folder='/data/users/bportilla/runs/final_runs/run_149/Particles'
 
 
 ############################################################
@@ -37,13 +37,13 @@ class Archivo:
         return self.filename[13:17]
         
     def getEntry(self,i,j):
-        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_148/Particles/%s"%self.filename)
+        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_149/Particles/%s"%self.filename)
         data=np.transpose(hdulist[0].data)
         value=data[i][j]
         return value
     
     def getWavelength(self):
-        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_148/Particles/%s"%self.filename)
+        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_149/Particles/%s"%self.filename)
         data=np.transpose(hdulist[0].data)
         value=np.reshape(data[:,0:1],data.shape[0])
         return value
@@ -136,9 +136,9 @@ for particle in case1:
             Cc1_z3[i][Nbin_index_z3]=p.getEntry(i,3)
         Nbin_index_z3+=1
 
-#Nbin_index_z1=0
-#Nbin_index_z2=0
-#Nbin_index_z3=0
+Nbin_index_z1=0
+Nbin_index_z2=0
+Nbin_index_z3=0
 for particle in case2:
     p=Archivo(particle)
     if p.zone()=='0001':
@@ -184,7 +184,8 @@ for i in range(0,len(wl1)):
     sum_Ac1[2][i]=np.sum(Ac1_z3[i])
     sum_Bc1[2][i]=np.sum(Bc1_z3[i])
     sum_Cc1[2][i]=np.sum(Cc1_z3[i])
-    
+
+
 for i in range(0,len(wl2)):
     sum_Ac2[0][i]=np.sum(Ac2_z1[i])
     sum_Bc2[0][i]=np.sum(Bc2_z1[i])
@@ -197,54 +198,30 @@ for i in range(0,len(wl2)):
     sum_Ac2[2][i]=np.sum(Ac2_z3[i])
     sum_Bc2[2][i]=np.sum(Bc2_z3[i])
     sum_Cc2[2][i]=np.sum(Cc2_z3[i])
-    
 
 
-sys.exit()
 ############################################################
-# Plotting
-fig=plt.figure(figsize=(14,12))
-gs=gridspec.GridSpec(3,3)
-ax1=plt.subplot(gs[0,0:1])
-ax2=plt.subplot(gs[0,1:2])
-ax3=plt.subplot(gs[0,2:3])
-ax4=plt.subplot(gs[1,0:1])
-ax5=plt.subplot(gs[1,1:2])
-ax6=plt.subplot(gs[1,2:3])
-ax7=plt.subplot(gs[2,0:1])
-ax8=plt.subplot(gs[2,1:2])
-ax9=plt.subplot(gs[2,2:3])
-ax1.plot(wl1,sum_Ac1[0])
-ax2.plot(wl1,sum_Bc1[0])
-ax3.plot(wl1,sum_Cc1[0])
-ax4.plot(wl1,sum_Ac1[1])
-ax5.plot(wl1,sum_Bc1[1])
-ax6.plot(wl1,sum_Cc1[1])
-ax7.plot(wl1,sum_Ac1[2])
-ax8.plot(wl1,sum_Bc1[2])
-ax9.plot(wl1,sum_Cc1[2])
-ax1.set_xscale('log')
-ax2.set_xscale('log')
-ax3.set_xscale('log')
-ax4.set_xscale('log')
-ax5.set_xscale('log')
-ax6.set_xscale('log')
-ax7.set_xscale('log')
-ax8.set_xscale('log')
-ax9.set_xscale('log')
-ax1.set_yscale('log')
-ax2.set_yscale('log')
-ax3.set_yscale('log')
-ax4.set_yscale('log')
-ax5.set_yscale('log')
-ax6.set_yscale('log')
-ax7.set_yscale('log')
-ax8.set_yscale('log')
-ax9.set_yscale('log')
+# Creating HDU's for case 1 and case 2
+hdu_c1_A=np.stack((wl1,sum_Ac1[0],sum_Ac1[1],sum_Ac1[2]),axis=-1)
+hdu_c1_B=np.stack((wl1,sum_Bc1[0],sum_Bc1[1],sum_Bc1[2]),axis=-1)
+hdu_c1_C=np.stack((wl1,sum_Cc1[0],sum_Cc1[1],sum_Cc1[2]),axis=-1)
+hdu_c1_A=fits.PrimaryHDU(hdu_c1_A)
+hdu_c1_B=fits.PrimaryHDU(hdu_c1_B)
+hdu_c1_C=fits.PrimaryHDU(hdu_c1_C)
+hdu_c1_A.writeto('case1_A.fits')
+hdu_c1_B.writeto('case1_B.fits')
+hdu_c1_C.writeto('case1_C.fits')
 
-plt.show()
+hdu_c2_A=np.stack((wl2,sum_Ac2[0],sum_Ac2[1],sum_Ac2[2]),axis=-1)
+hdu_c2_B=np.stack((wl2,sum_Bc2[0],sum_Bc2[1],sum_Bc2[2]),axis=-1)
+hdu_c2_C=np.stack((wl2,sum_Cc2[0],sum_Cc2[1],sum_Cc2[2]),axis=-1)
+hdu_c2_A=fits.PrimaryHDU(hdu_c2_A)
+hdu_c2_B=fits.PrimaryHDU(hdu_c2_B)
+hdu_c2_C=fits.PrimaryHDU(hdu_c2_C)
+hdu_c2_A.writeto('case2_A.fits')
+hdu_c2_B.writeto('case2_B.fits')
+hdu_c2_C.writeto('case2_C.fits')
 
 
 
-            
-sys.exit()
+
