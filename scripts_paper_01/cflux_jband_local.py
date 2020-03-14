@@ -20,13 +20,24 @@ def combine_Polarizations(Q,U,phi0):
                     Uphi[i,j]= -Q[i,j]*np.sin(2*phi)+U[i,j]*np.cos(2*phi)
     return Qphi, Uphi
 
+def shift(M,c,d):
+    a=M.min()
+    b=M.max()
+    c=-1
+    d=+1
+    for i in range(0,M.shape[0]):
+        for j in range(0,M.shape[1]):
+            M[i][j]=c+((d-c)/(b-a))*(M[i][j]-a)
+    return M
+
 
 def jband():
     lim=120.0
 
     ############################################################
     # Absolute paths to files
-    fits_image='RTout0001_000001.25.fits.gz'
+    #fits_image='RTout0001_000001.25.fits.gz'
+    fits_image='RToutObs0001_000001.25.fits.gz'
     path_fits_image='output/'+fits_image
     path_image_file='Image_jband.out'
     path_input_file='input.dat'
@@ -70,9 +81,9 @@ def jband():
     # Start here
     Qphi_g, Uphi_g= combine_Polarizations(data_Q,data_U,0.0)
 
+    """
     ############################################################
     # mJy/arcsec2 -> mJy/beam
-    """
     beamx=6.13/1000 # arcsec
     beamy=beamx # arcsec
     beam_size=np.pi*beamx*beamy # arcsec2
@@ -81,9 +92,10 @@ def jband():
 
     ############################################################
     # Convolve?
-    data_mod=convolve_image_jband(Qphi_g)
+    #data_mod=convolve_image_jband(Qphi_g)
+    Qphi_g=shift(Qphi_g,-1,1)
+    data_mod=Qphi_g
     
-
     ############################################################
     #
     # Get radial profiles - model
@@ -119,7 +131,7 @@ def jband():
     vmin=np.percentile(data_mod,a)
     vmax=np.percentile(data_mod,100-a)
     aperture=apertures[-1]
-    plt.imshow(data_mod,clim=(vmin,vmax))
+    plt.imshow(data_mod)
     plt.title("Image model")
     aperture.plot(color='red',lw=1)
     plt.show()
@@ -140,7 +152,10 @@ def jband():
         col_values.append(phot_table[col][0])
     brightness=[col_values[i] for i in range(3,len(col_values))]
     brightness=np.array(brightness)
-    brightness=brightness/max(brightness)
+    #brightness=brightness/max(brightness)
+
+    for i in range(0,len(brightness)):
+        brightness[i]=brightness[i]/apertures[i].area()
 
     rcmin=30.0
     rcmax=100.0
@@ -150,10 +165,8 @@ def jband():
             bmaxc.append(brightness[i])
     bmaxc=np.array(bmaxc)
 
-    #fac=1/0.0467
     fac=1/max(bmaxc)
     brightness=brightness*fac
-
 
     """
     ############################################################
