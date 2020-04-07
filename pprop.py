@@ -7,10 +7,30 @@ import sys
 import fnmatch
 
 Nzones=3
-
+Nbins=np.zeros(Nzones)
+apows=np.zeros(Nzones)
+psizes_min=np.zeros(Nzones)
+psizes_max=np.zeros(Nzones)
+psizes=[]
 ############################################################
 # Working dir
-folder='/data/users/bportilla/runs/final_runs/run_150/Particles'
+directory="/data/users/bportilla/runs/final_runs/run_149/"
+folder=directory+'Particles'
+path_to_input=directory+"input.dat"
+infile=open(path_to_input).readlines()
+for i in range(1,Nzones+1):
+    for line in infile:
+        if line.split("=")[0]==("computepart0%d:ngrains"%(i)):
+            Nbins[i-1]=int(line.split("=")[1])
+        if line.split("=")[0]==("computepart0%d:amin"%(i)):
+            psizes_min[i-1]=float(line.split("=")[1])
+        if line.split("=")[0]==("computepart0%d:amax"%(i)):
+            psizes_max[i-1]=float(line.split("=")[1])
+        if line.split("=")[0]==("computepart0%d:apow"%(i)):
+            apows[i-1]=float(line.split("=")[1])
+            
+for i in range(0,Nzones):
+    psizes.append((psizes_min[i],psizes_max[i]))
 
 
 ############################################################
@@ -18,8 +38,6 @@ folder='/data/users/bportilla/runs/final_runs/run_150/Particles'
 case1=[]
 case2=[]
 for filename in os.listdir(folder):
-    #if fnmatch.fnmatch(filename,'*_f0.71_f0.29.fits.gz'):
-    #    case1.append(filename)
     if fnmatch.fnmatch(filename,'*_f0.58_f0.42.fits.gz'):
         case2.append(filename)
 
@@ -35,50 +53,48 @@ class Archivo:
 
     def binnum(self):
         return self.filename[13:17]
+
+    def f(self):
+        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_149/Particles/%s"%self.filename)
+        hdu=hdulist[0]
+        hdr=hdu.header
+        amin_bin=hdr["R_MIN"]
+        amax_bin=hdr["R_MAX"]
+        apow=hdr["R_POW"]
+        z=int(self.zone())
+        bins=Nbins[z-1]
+        amin=psizes[z-1][0]
+        amax=psizes[z-1][1]
+        f_num=amax_bin**(-apow+1)-amin_bin**(-apow+1)
+        f_den=amax**(-apow+1)-amin**(-apow+1)
+        value=f_num/f_den
+        return value
         
     def getEntry(self,i,j):
-        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_150/Particles/%s"%self.filename)
+        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_149/Particles/%s"%self.filename)
         data=np.transpose(hdulist[0].data)
         value=data[i][j]
         return value
     
     def getWavelength(self):
-        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_150/Particles/%s"%self.filename)
+        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_149/Particles/%s"%self.filename)
         data=np.transpose(hdulist[0].data)
         value=np.reshape(data[:,0:1],data.shape[0])
         return value
-        
+
 
 ############################################################
 # Create wavelength array
-#p1=Archivo(case1[0])
 p2=Archivo(case2[0])
-
-#wl1=p1.getWavelength()
 wl2=p2.getWavelength()
 
 
 ############################################################
 # Getting Nbin for each zone
-"""
-Nbin_c1_z1=0
-Nbin_c1_z2=0
-Nbin_c1_z3=0
-"""
 Nbin_c2_z1=0
 Nbin_c2_z2=0
 Nbin_c2_z3=0
 
-"""
-for particle in case1:
-    p=Archivo(particle)
-    if p.zone()=='0001':
-        Nbin_c1_z1+=1
-    elif p.zone()=='0002':
-        Nbin_c1_z2+=1
-    elif p.zone()=='0003':
-        Nbin_c1_z3+=1
-"""
 for particle in case2:
     p=Archivo(particle)
     if p.zone()=='0001':
@@ -87,21 +103,11 @@ for particle in case2:
         Nbin_c2_z2+=1
     elif p.zone()=='0003':
         Nbin_c2_z3+=1
-        
+   
+
 ############################################################
 # Create matrices to store values of Ai,Bi and Ci for case 1
 # and case 2
-"""
-Ac1_z1=np.zeros((len(wl1),Nbin_c1_z1))
-Ac1_z2=np.zeros((len(wl1),Nbin_c1_z2))
-Ac1_z3=np.zeros((len(wl1),Nbin_c1_z3))
-Bc1_z1=np.zeros((len(wl1),Nbin_c1_z1))
-Bc1_z2=np.zeros((len(wl1),Nbin_c1_z2))
-Bc1_z3=np.zeros((len(wl1),Nbin_c1_z3))
-Cc1_z1=np.zeros((len(wl1),Nbin_c1_z1))
-Cc1_z2=np.zeros((len(wl1),Nbin_c1_z2))
-Cc1_z3=np.zeros((len(wl1),Nbin_c1_z3))
-"""
 Ac2_z1=np.zeros((len(wl2),Nbin_c2_z1))
 Ac2_z2=np.zeros((len(wl2),Nbin_c2_z2))
 Ac2_z3=np.zeros((len(wl2),Nbin_c2_z3))
@@ -115,31 +121,6 @@ Cc2_z3=np.zeros((len(wl2),Nbin_c2_z3))
 
 ############################################################
 # Filling matrices
-"""
-Nbin_index_z1=0
-Nbin_index_z2=0
-Nbin_index_z3=0
-for particle in case1:
-    p=Archivo(particle)
-    if p.zone()=='0001':
-        for i in range(0,len(wl1)):
-            Ac1_z1[i][Nbin_index_z1]=p.getEntry(i,1)
-            Bc1_z1[i][Nbin_index_z1]=p.getEntry(i,2)
-            Cc1_z1[i][Nbin_index_z1]=p.getEntry(i,3)
-        Nbin_index_z1+=1
-    elif p.zone()=='0002':
-        for i in range(0,len(wl1)):
-            Ac1_z2[i][Nbin_index_z2]=p.getEntry(i,1)
-            Bc1_z2[i][Nbin_index_z2]=p.getEntry(i,2)
-            Cc1_z2[i][Nbin_index_z2]=p.getEntry(i,3)
-        Nbin_index_z2+=1
-    elif p.zone()=='0003':
-        for i in range(0,len(wl1)):
-            Ac1_z3[i][Nbin_index_z3]=p.getEntry(i,1)
-            Bc1_z3[i][Nbin_index_z3]=p.getEntry(i,2)
-            Cc1_z3[i][Nbin_index_z3]=p.getEntry(i,3)
-        Nbin_index_z3+=1
-"""
 Nbin_index_z1=0
 Nbin_index_z2=0
 Nbin_index_z3=0
@@ -147,49 +128,30 @@ for particle in case2:
     p=Archivo(particle)
     if p.zone()=='0001':
         for i in range(0,len(wl2)):
-            Ac2_z1[i][Nbin_index_z1]=p.getEntry(i,1)
-            Bc2_z1[i][Nbin_index_z1]=p.getEntry(i,2)
-            Cc2_z1[i][Nbin_index_z1]=p.getEntry(i,3)
+            Ac2_z1[i][Nbin_index_z1]=p.f()*p.getEntry(i,1)
+            Bc2_z1[i][Nbin_index_z1]=p.f()*p.getEntry(i,2)
+            Cc2_z1[i][Nbin_index_z1]=p.f()*p.getEntry(i,3)
         Nbin_index_z1+=1
     elif p.zone()=='0002':
         for i in range(0,len(wl2)):
-            Ac2_z2[i][Nbin_index_z2]=p.getEntry(i,1)
-            Bc2_z2[i][Nbin_index_z2]=p.getEntry(i,2)
-            Cc2_z2[i][Nbin_index_z2]=p.getEntry(i,3)
+            Ac2_z2[i][Nbin_index_z2]=p.f()*p.getEntry(i,1)
+            Bc2_z2[i][Nbin_index_z2]=p.f()*p.getEntry(i,2)
+            Cc2_z2[i][Nbin_index_z2]=p.f()*p.getEntry(i,3)
         Nbin_index_z2+=1
     elif p.zone()=='0003':
         for i in range(0,len(wl2)):
-            Ac2_z3[i][Nbin_index_z3]=p.getEntry(i,1)
-            Bc2_z3[i][Nbin_index_z3]=p.getEntry(i,2)
-            Cc2_z3[i][Nbin_index_z3]=p.getEntry(i,3)
+            Ac2_z3[i][Nbin_index_z3]=p.f()*p.getEntry(i,1)
+            Bc2_z3[i][Nbin_index_z3]=p.f()*p.getEntry(i,2)
+            Cc2_z3[i][Nbin_index_z3]=p.f()*p.getEntry(i,3)
         Nbin_index_z3+=1
 
 
 ############################################################
 # Adding entries
-"""
-sum_Ac1=np.zeros((3,len(wl1)))
-sum_Bc1=np.zeros((3,len(wl1)))
-sum_Cc1=np.zeros((3,len(wl1)))
-"""
 sum_Ac2=np.zeros((3,len(wl2)))
 sum_Bc2=np.zeros((3,len(wl2)))
 sum_Cc2=np.zeros((3,len(wl2)))
 
-"""
-for i in range(0,len(wl1)):
-    sum_Ac1[0][i]=np.sum(Ac1_z1[i])
-    sum_Bc1[0][i]=np.sum(Bc1_z1[i])
-    sum_Cc1[0][i]=np.sum(Cc1_z1[i])
-
-    sum_Ac1[1][i]=np.sum(Ac1_z2[i])
-    sum_Bc1[1][i]=np.sum(Bc1_z2[i])
-    sum_Cc1[1][i]=np.sum(Cc1_z2[i])
-
-    sum_Ac1[2][i]=np.sum(Ac1_z3[i])
-    sum_Bc1[2][i]=np.sum(Bc1_z3[i])
-    sum_Cc1[2][i]=np.sum(Cc1_z3[i])
-"""
 
 for i in range(0,len(wl2)):
     sum_Ac2[0][i]=np.sum(Ac2_z1[i])
@@ -206,27 +168,16 @@ for i in range(0,len(wl2)):
 
 
 ############################################################
-# Creating HDU's for case 1 and case 2
-"""
-hdu_c1_A=np.stack((wl1,sum_Ac1[0],sum_Ac1[1],sum_Ac1[2]),axis=-1)
-hdu_c1_B=np.stack((wl1,sum_Bc1[0],sum_Bc1[1],sum_Bc1[2]),axis=-1)
-hdu_c1_C=np.stack((wl1,sum_Cc1[0],sum_Cc1[1],sum_Cc1[2]),axis=-1)
-hdu_c1_A=fits.PrimaryHDU(hdu_c1_A)
-hdu_c1_B=fits.PrimaryHDU(hdu_c1_B)
-hdu_c1_C=fits.PrimaryHDU(hdu_c1_C)
-hdu_c1_A.writeto('case1_A.fits')
-hdu_c1_B.writeto('case1_B.fits')
-hdu_c1_C.writeto('case1_C.fits')
-"""
+# Creating HDU's for case 2
 hdu_c2_A=np.stack((wl2,sum_Ac2[0],sum_Ac2[1],sum_Ac2[2]),axis=-1)
 hdu_c2_B=np.stack((wl2,sum_Bc2[0],sum_Bc2[1],sum_Bc2[2]),axis=-1)
 hdu_c2_C=np.stack((wl2,sum_Cc2[0],sum_Cc2[1],sum_Cc2[2]),axis=-1)
 hdu_c2_A=fits.PrimaryHDU(hdu_c2_A)
 hdu_c2_B=fits.PrimaryHDU(hdu_c2_B)
 hdu_c2_C=fits.PrimaryHDU(hdu_c2_C)
-hdu_c2_A.writeto('case2_A.fits')
-hdu_c2_B.writeto('case2_B.fits')
-hdu_c2_C.writeto('case2_C.fits')
+hdu_c2_A.writeto('ext.fits')
+hdu_c2_B.writeto('abs.fits')
+hdu_c2_C.writeto('sca.fits')
 
 
 
