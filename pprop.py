@@ -14,7 +14,7 @@ psizes_max=np.zeros(Nzones)
 psizes=[]
 ############################################################
 # Working dir
-directory="/data/users/bportilla/runs/final_runs/run_149/"
+directory="/data/users/bportilla/runs/final_runs/run_153/"
 folder=directory+'Particles'
 path_to_input=directory+"input.dat"
 infile=open(path_to_input).readlines()
@@ -55,7 +55,7 @@ class Archivo:
         return self.filename[13:17]
 
     def f(self):
-        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_149/Particles/%s"%self.filename)
+        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_153/Particles/%s"%self.filename)
         hdu=hdulist[0]
         hdr=hdu.header
         amin_bin=hdr["R_MIN"]
@@ -65,19 +65,19 @@ class Archivo:
         bins=Nbins[z-1]
         amin=psizes[z-1][0]
         amax=psizes[z-1][1]
-        f_num=amax_bin**(-apow+1)-amin_bin**(-apow+1)
-        f_den=amax**(-apow+1)-amin**(-apow+1)
+        f_num=amax_bin**(-apow+4)-amin_bin**(-apow+4)
+        f_den=amax**(-apow+4)-amin**(-apow+4)
         value=f_num/f_den
         return value
         
     def getEntry(self,i,j):
-        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_149/Particles/%s"%self.filename)
+        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_153/Particles/%s"%self.filename)
         data=np.transpose(hdulist[0].data)
         value=data[i][j]
         return value
     
     def getWavelength(self):
-        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_149/Particles/%s"%self.filename)
+        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_153/Particles/%s"%self.filename)
         data=np.transpose(hdulist[0].data)
         value=np.reshape(data[:,0:1],data.shape[0])
         return value
