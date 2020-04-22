@@ -6,15 +6,27 @@ import os
 import sys
 import fnmatch
 
-Nzones=3
+
+############################################################
+# Inputs
+Nzones=1
+run_name="run_154"
+fvSI=0.85
+fvC=0.15
+
+
+############################################################
+# Initializing stuff
 Nbins=np.zeros(Nzones)
 apows=np.zeros(Nzones)
 psizes_min=np.zeros(Nzones)
 psizes_max=np.zeros(Nzones)
 psizes=[]
+
+
 ############################################################
 # Working dir
-directory="/data/users/bportilla/runs/final_runs/run_153/"
+directory=("/data/users/bportilla/runs/final_runs/%s/"%(run_name))
 folder=directory+'Particles'
 path_to_input=directory+"input.dat"
 infile=open(path_to_input).readlines()
@@ -35,10 +47,11 @@ for i in range(0,Nzones):
 
 ############################################################
 # Creating lists for both cases
-case1=[]
+fvC=str(fvC)
+fvSI=str(fvSI)
 case2=[]
 for filename in os.listdir(folder):
-    if fnmatch.fnmatch(filename,'*_f0.58_f0.42.fits.gz'):
+    if fnmatch.fnmatch(filename,('*_f%s_f%s.fits.gz'%(fvSI,fvC))):
         case2.append(filename)
 
 
@@ -55,7 +68,7 @@ class Archivo:
         return self.filename[13:17]
 
     def f(self):
-        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_153/Particles/%s"%self.filename)
+        hdulist=fits.open("/data/users/bportilla/runs/final_runs/%s/Particles/%s"%(run_name,self.filename))
         hdu=hdulist[0]
         hdr=hdu.header
         amin_bin=hdr["R_MIN"]
@@ -71,13 +84,13 @@ class Archivo:
         return value
         
     def getEntry(self,i,j):
-        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_153/Particles/%s"%self.filename)
+        hdulist=fits.open("/data/users/bportilla/runs/final_runs/%s/Particles/%s"%(run_name,self.filename))
         data=np.transpose(hdulist[0].data)
         value=data[i][j]
         return value
     
     def getWavelength(self):
-        hdulist=fits.open("/data/users/bportilla/runs/final_runs/run_153/Particles/%s"%self.filename)
+        hdulist=fits.open("/data/users/bportilla/runs/final_runs/%s/Particles/%s"%(run_name,self.filename))
         data=np.transpose(hdulist[0].data)
         value=np.reshape(data[:,0:1],data.shape[0])
         return value
