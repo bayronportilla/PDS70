@@ -15,7 +15,7 @@ def topx(l,pxsize,d):
     return x
 
 
-def get_profile(image,pxsize,amean,width,inc,PA,d):
+def get_profile(image,pxsize,amean,width,inc,PA,d,Nbins):
 
     ############################################################
     #
@@ -27,6 +27,7 @@ def get_profile(image,pxsize,amean,width,inc,PA,d):
     # inc: inclination of the disk (deg).
     # PA: east-north measured position angle of the disk (deg).
     # d: distance to the source in pc
+    # Nbins: number of azimuthal bins 
     #
     # Returns 
     # 
@@ -37,8 +38,15 @@ def get_profile(image,pxsize,amean,width,inc,PA,d):
 
     ############################################################
     # Loading data
+    """
+    # Observation
     hdu=fits.open(image)
     data=hdu[0].data[0][0]
+    #data=hdu[0].data
+    """
+    # Model
+    hdu=fits.open(image)
+    data=hdu[0].data
 
     
     ############################################################
@@ -69,7 +77,6 @@ def get_profile(image,pxsize,amean,width,inc,PA,d):
     plt.show()
     
     
-
     ############################################################
     # Creating aperture mask
     mask=aperture.to_mask(method="center")
@@ -83,20 +90,89 @@ def get_profile(image,pxsize,amean,width,inc,PA,d):
     ############################################################
     # Extracting pixels located inside the aperture
     aperture_data=mask.multiply(data)
-    print(aperture_data.shape)
+    
     # Do a check?
     plt.imshow(aperture_data)
     plt.colorbar()
     plt.show()
     
 
-#    print(mask)
 
+    ############################################################
+    # Define class "Bin"
+    class Bin:
+        def __init__(self,ID,theta_min,theta_max,plist):
+            self.ID=ID
+            self.theta_min=theta_min
+            self.theta_max=theta_max
+            self.plist=plist
+        
+        def getFlux(self):
+            flux=0.0
+            for pixel in self.plist:
+                flux+=aperture_data[pixel[0],pixel[1]]
+            return flux
+
+        def getTheta(self):
+            value=(self.theta_max-self.theta_min)*0.5+self.theta_min
+            return value
+    
+        
+    ############################################################
+    # Creating array of bins
+    bin_list=[]
+    thetas=np.linspace(0,2*np.pi,Nbins+1)
+    for i in range(0,Nbins):
+        sbin=Bin(i+1,thetas[i],thetas[i+1],[])
+        bin_list.append(sbin)
+    """
+    for sbin in bin_list:
+        print (sbin.ID,
+               (sbin.theta_min*units.rad).to(units.deg).value,
+               (sbin.theta_max*units.rad).to(units.deg).value,
+               sbin.plist)
+    """
 
     
-    #plt.imshow(data)
-    #plt.show()
+    ############################################################
+    # Creating array of pixel's index within the aperture 
+    # relative to the star
+    pixel_list=[]
+    yc=int(aperture_data.shape[0]*0.5)
+    xc=int(aperture_data.shape[1]*0.5)
+    for i in range(0,aperture_data.shape[1]): # Over columns 
+        for j in range(0,aperture_data.shape[0]): # Over rows
+            if aperture_data[j,i]!=0.0:
+                pixel_list.append((j-yc,i-xc))
+    
 
+    ############################################################
+    # Filling bin_list
+    for point in pixel_list:
+        phi=np.arctan2(point[0],point[1])
+        if phi<0.0:
+            phi=2*np.pi+phi
+        for sbin in bin_list:
+            if sbin.theta_min<=phi<sbin.theta_max:
+                pixel=(point[0]+yc,point[1]+xc)
+                sbin.plist.append(pixel)
+                
+    x=[]
+    y=[]
+    for value in bin_list:
+        PA_bin=(value.getTheta()*units.rad).to(units.deg).value-90.0
+        if PA_bin<0.0:
+            PA_bin=360.0+PA_bin
+        x.append(PA_bin)
+        y.append(value.getFlux()/len(value.plist))
+
+    plt.plot(x,y,".")
+    plt.show()
+    
+    
     return 0
 
-get_profile("../observations/PDS70_cont-final.fits",0.020,74.0,10.0,49.7,158.6,113.43)
+#get_profile("../observations/PDS70_cont-final.fits",0.020,74.0,10.0,49.7,158.6,113.43,45)
+get_profile("/Users/users/bportilla/Documents/first_project/scripts/PDS70/scripts_paper_01/figures/data/alma_model_rotated.fits",
+            0.020,74.0,10.0,49.7,158.6,113.43,45)
+#get_profile("../observations/PDS_70_2017-08-01_QPHI_amorph.fits",0.01226,54.0,10.0,49.7,158.6,113.43,45)
