@@ -49,14 +49,10 @@ def shift(M,c,d):
     return M
 
 
-
-def jband():
-    lim=120.0
+def image(fits_image):
 
     ############################################################
     # Absolute paths to files
-    #fits_image='RTout0001_000001.25.fits.gz'
-    fits_image='RToutObs0001_000001.25.fits.gz'
     path_fits_image='output/'+fits_image
     path_image_file='Image_jband.out'
     path_input_file='input.dat'
@@ -95,18 +91,47 @@ def jband():
     
     ############################################################
     # Start here
-    Qphi_g, Uphi_g= combine_Polarizations(data_Q,data_U,0)
+    Qphi_g, Uphi_g= combine_Polarizations(data_Q,data_U,0.0)
     
     # Shift data
-    #Qphi_g=shift(Qphi_g,-1,1)
     data_mod=Qphi_g
+
+    return data_mod
     
+
+def radial_profile(data,lim):
 
     ############################################################
     #
     # Get radial profiles - model
     #
     ############################################################
+
+    ############################################################
+    # Fetching information
+    imfile=open("Image_jband.out").readlines()
+    for line in imfile:
+        if line.split('=')[0]=='MCobs:fov':
+            fov=float(line.split('=')[1].split('!')[0])
+        elif line.split('=')[0]=='MCobs:npix':
+            npix=float(line.split('=')[1].split('!')[0])
+        elif line.split('=')[0]=='MCobs:phi':
+            phi_image=float(line.split('=')[1].split('!')[0])
+        elif line.split('=')[0]=='MCobs:theta':
+            theta=float(line.split('=')[1].split('!')[0])
+        else:
+            continue
+
+    infile=open("input.dat").readlines()
+    for line in infile:
+        if line.split('=')[0]=='Distance':
+            d=float(line.split('=')[1])
+
+    ############################################################
+    # Derived quantities
+    pxsize=fov/npix # pixel scale (arcsec/px)
+    phi=(phi_image*units.deg).to(units.rad).value # PA from north to east (rad)
+    e=np.sin(theta) # eccentricity of the annulus
 
     angle_annulus=((0.0)*units.deg).to(units.rad).value 
     e=np.sin((theta*units.deg).to(units.rad).value) # eccentricity of the annulus
@@ -117,8 +142,8 @@ def jband():
     angular_lim=(angular_lim*units.rad).to(units.arcsec).value # arcsec
     pixel_lim=int(round(angular_lim/pxsize))
 
-    xc=0.5*data_mod.shape[0] # Image center in data coordinates
-    yc=0.5*data_mod.shape[1] # Image center in data coordinates
+    xc=0.5*data.shape[0] # Image center in data coordinates
+    yc=0.5*data.shape[1] # Image center in data coordinates
     dr=1.0 # Width of the annulus
     w=1.0
     h=1.0
@@ -147,16 +172,16 @@ def jband():
     ############################################################
     # Do a check
     a=0.4
-    vmin=np.percentile(data_mod,a)
-    vmax=np.percentile(data_mod,100-a)
-    plt.imshow(data_mod,clim=(vmin,vmax))
+    vmin=np.percentile(data,a)
+    vmax=np.percentile(data,100-a)
+    plt.imshow(data,clim=(vmin,vmax))
     plt.title("Image observation")
     apertures.plot(color='red',lw=1)
     #plt.xlim(400,600)
     #plt.ylim(600,400)
     plt.show()
     """
-    phot_table=aperture_photometry(data_mod,apertures)
+    phot_table=aperture_photometry(data,apertures)
     r_au=[toAU(phot_table['xcenter'][i].value,phot_table['ycenter'][i].value,xc,yc,pxsize,d) for i in range(0,len(phot_table))]
     brightness=[phot_table['aperture_sum'][i] for i in range(0,len(phot_table))]
     brightness=np.array(brightness)
@@ -190,10 +215,9 @@ def jband():
     file=open('jband_radial_profile_modeled.dat',"w")
     for i in range(0,len(r_au)):
         file.write('%.15e %.15e \n'%(r_au[i],brightness[i]))
-
     
     #data_mod=get_profile(data_mod,pxsize,lim)
 
-    return data_mod
+    return None
 
-jband()
+#jband()

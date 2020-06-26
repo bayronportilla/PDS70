@@ -8,7 +8,7 @@ from mcmax3d_analysis.mcmax3d_convolution import convolve_model
 import sys
 plt.style.use('fancy')
 
-def alma_image(fits_image,beam_x,beam_y,beam_angle):
+def image(fits_image,beam_x,beam_y,beam_angle):
 
 
     ############################################################
@@ -71,7 +71,7 @@ def alma_image(fits_image,beam_x,beam_y,beam_angle):
     return data_mod
 
 
-def alma_radial_profile(data,lim):
+def radial_profile(data,lim):
 
     ############################################################
     # Fetching information
