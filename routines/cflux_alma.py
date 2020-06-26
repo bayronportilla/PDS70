@@ -8,11 +8,11 @@ from mcmax3d_analysis.mcmax3d_convolution import convolve_model
 import sys
 plt.style.use('fancy')
 
-def alma():
+def alma_image(fits_image,beam_x,beam_y,beam_angle):
+
 
     ############################################################
     # Absolute paths to files
-    fits_image='RTout0001_000854.89.fits.gz'
     path_fits_image='output/'+fits_image
     path_image_file='Image_alma.out'
     path_input_file='input.dat'
@@ -55,9 +55,9 @@ def alma():
 
     ############################################################
     # Convolve?
-    beam_x=0.074 # arcsec
-    beam_y=0.057 # arcsec
-    data_mod=convolve_model(data_mod,fov,npix,beam_x,beam_y,63.0) # mJy/arcsec^2
+    #beam_x=0.074 # arcsec
+    #beam_y=0.057 # arcsec
+    data_mod=convolve_model(data_mod,fov,npix,beam_x,beam_y,beam_angle) # mJy/arcsec^2
 
 
     ############################################################
@@ -67,26 +67,53 @@ def alma():
     print()
     print("Maximum value of the density flux in ALMA image (mJy/beam)",data_mod.max())
     print()
-    
+
+    return data_mod
+
+
+def alma_radial_profile(data,lim):
 
     ############################################################
-    #
-    # Get radial profiles - model
-    #
+    # Fetching information
+    imfile=open("Image_alma.out").readlines()
+    for line in imfile:
+        if line.split('=')[0]=='MCobs:fov':
+            fov=float(line.split('=')[1].split('!')[0])
+        elif line.split('=')[0]=='MCobs:npix':
+            npix=float(line.split('=')[1].split('!')[0])
+        elif line.split('=')[0]=='MCobs:phi':
+            phi_image=float(line.split('=')[1].split('!')[0])
+        elif line.split('=')[0]=='MCobs:theta':
+            theta=float(line.split('=')[1].split('!')[0])
+        else:
+            continue
+
+    infile=open("input.dat").readlines()
+    for line in infile:
+        if line.split('=')[0]=='Distance':
+            d=float(line.split('=')[1])
+
+
     ############################################################
-    
+    # Derived quantities
+    pxsize=fov/npix # pixel scale (arcsec/px)
+    theta=(theta*units.deg).to(units.rad).value # Inclination (rad)
+    d=(d*units.pc).to(units.au).value # Distance (au)
+    e=np.sin(theta) # eccentricity of the annulus
+
+
     ############################################################
     # Input params
     angle_annulus=0.0
 
     # Determining limit for radial profile
-    lim=120.0
+    #lim=120.0
     linear_lim=2*(lim) # AU
     angular_lim=linear_lim/d # rad
     angular_lim=(angular_lim*units.rad).to(units.arcsec).value # arcsec
     pixel_lim=int(round(angular_lim/pxsize))
-    xc=0.5*data_mod.shape[0] # Image center in data coordinates
-    yc=0.5*data_mod.shape[1] # Image center in data coordinates
+    xc=0.5*data.shape[0] # Image center in data coordinates
+    yc=0.5*data.shape[1] # Image center in data coordinates
     dr=1.0 # Width of the annulus
     a_in_array=[]
     for i in np.arange(yc+dr,yc+0.5*pixel_lim,dr):
@@ -101,14 +128,14 @@ def alma():
     ############################################################
     # Do a check
     a=0.01
-    vmin_jband=np.percentile(data_mod,a)
-    vmax_jband=np.percentile(data_mod,100-a)
+    vmin_jband=np.percentile(data,a)
+    vmax_jband=np.percentile(data,100-a)
     aperture=apertures[-1]
-    plt.imshow(data_mod,clim=(vmin_jband,vmax_jband))
+    plt.imshow(data,clim=(vmin_jband,vmax_jband))
     plt.title("Image model")
     aperture.plot(color='red',lw=1)
     plt.show()
-    print(data_mod.max())
+    print(data.max())
     sys.exit()
     """
 
@@ -121,7 +148,7 @@ def alma():
     r_au=np.array(r_au)
     r_arcsec=np.array(r_arcsec)
 
-    phot_table=aperture_photometry(data_mod,apertures)
+    phot_table=aperture_photometry(data,apertures)
     col_values=[]
     for col in phot_table.colnames:
         col_values.append(phot_table[col][0])
@@ -161,7 +188,6 @@ def alma():
     for i in range(0,len(r_au)):
         file.write('%.15e %.15e \n'%(r_au[i],brightness[i]))
 
-
-    return data_mod
+    return None
 
 #alma()
