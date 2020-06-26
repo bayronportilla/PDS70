@@ -77,7 +77,10 @@ def prepare_Qphi_image(data,PA_disk):
     return data_rot
         
 
-def peak_flux_Qphi_model(data_rot_Qphi):
+def peak_flux_Qphi_model(Qphi_model_rotated):
+
+    hdu=fits.open(Qphi_model_rotated)
+    data_rot_Qphi=hdu[0].data
 
     infile=open("input.dat").readlines()
     for line in infile:
@@ -163,7 +166,10 @@ def prepare_alma_image(data,PA_disk,**kwargs):
     return data_rot
 
 
-def peak_flux_alma_model(data_rot_alma):
+def peak_flux_alma_model(alma_model_rotated):
+
+    hdu=fits.open(alma_model_rotated)
+    data_rot_alma=hdu[0].data
 
     infile=open("input.dat").readlines()
     for line in infile:
