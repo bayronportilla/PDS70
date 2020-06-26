@@ -10,8 +10,8 @@ from photutils import aperture_photometry
 from mcmax3d_analysis.mcmax3d_convolution import convolve_observation
 from matplotlib.patches import Ellipse
 import matplotlib.gridspec as gridspec
-from cflux_alma import alma
-from cflux_jband import jband,combine_Polarizations
+import cflux_alma 
+import cflux_jband
 plt.style.use('fancy')
 
 def output_data():
@@ -48,8 +48,8 @@ def output_data():
     # Creating array of errors
     y_system_error=x_photometric*y_photometric_error
    
-    data_alma=alma()
-    data_jband=jband()
+    data_alma=cflux_alma.image("RTout0001_000854.89.fits.gz",0.074,0.057,63.0)
+    data_jband=cflux_jband.image("RToutObs0001_000001.25.fits.gz")
     
     
     ############################################################
