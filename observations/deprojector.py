@@ -10,6 +10,7 @@ import sys
 #hdulist=fits.open("PDS_70_2016-03-26_QPHI_CROPPED.fits")
 #data=hdulist[0].data
 
+
 ############################################################
 # ALMA
 hdulist=fits.open("PDS70_cont-final.fits")
@@ -28,11 +29,12 @@ class Pixel:
         pass
         
     def deproject(self,pa,inc): # method
-        pa=(pa*units.deg).to(units.rad).value
+        pa=((pa+90)*units.deg).to(units.rad).value
         inc=(inc*units.deg).to(units.rad).value
-        # The following matrix rotate a vector by an angle 
-        # theta, counterclockwise if |angle|>0
-        M=np.array([[np.cos(pa),-np.sin(pa)],[np.sin(pa),np.cos(pa)]])
+        # The following matrix rotates a vector by an angle 
+        # theta counterclockwise if |angle|>0
+        #M=np.array([[np.cos(pa),-np.sin(pa)],[np.sin(pa),np.cos(pa)]])
+        M=np.array([[np.cos(pa),np.sin(pa)],[-np.sin(pa),np.cos(pa)]]) # Clockwise rotation
         xxx=self.x
         yyy=self.y
         xx=np.dot(M,np.array([xxx,yyy]))[0]
@@ -48,9 +50,9 @@ class Pixel:
         self.y=int(self.y+abs(ymin))
 
 parray=[]
-for i in range(0,data.shape[0]):
-    for j in range(0,data.shape[1]):
-        p=Pixel(i,j,data[i][j])
+for j in range(0,data.shape[0]):
+    for i in range(0,data.shape[1]):
+        p=Pixel(i,j,data[j][i])
         parray.append(p)
 
 xmax=max((p.x) for p in parray)
@@ -77,28 +79,4 @@ for p in parray:
 hdu=fits.PrimaryHDU(data_deprojected)
 
 #hdu.writeto("jband_deprojected.fits")
-hdu.writeto("alma_deprojected.fits")
-
-
-    
-    
-
-
-
-
-    
-
-
-
-
-
-    
-
-
-
-
-
-        
-
-
-
+hdu.writeto("alma_deprojected_2.fits",overwrite=True)
